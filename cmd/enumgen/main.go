@@ -1,8 +1,6 @@
 package main
 
 import (
-	_ "embed"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -84,21 +82,15 @@ func main() {
 	if err != nil {
 		fail(fmt.Sprintf("determine module root: %v", err))
 	}
-	modulePath, err := readModulePath(modRoot)
+	modulePath, err := locator.ReadModulePath(modRoot)
 	if err != nil {
 		fail(fmt.Sprintf("read module path: %v", err))
 	}
 
-	rel, err := relativeDir(modRoot, pkgDir)
+	rel, err := locator.RelativePackagePath(modRoot, pkgDir)
 	if err != nil {
 		fail(fmt.Sprintf("determine relative dir: %v", err))
 	}
-
-	slog.Debug(
-		"relativeDir",
-		slog.String("rel", rel),
-		slog.String("gopackage", gopackage),
-	)
 
 	enumsImport := modulePath + "/" + rel + "/" + gopackage
 
@@ -119,37 +111,4 @@ func fail(msg string) {
 	slog.Error("enum gen:", slog.String("message", msg))
 
 	os.Exit(2)
-}
-
-// readModulePath reads the module path from the go.mod at the given root directory.
-// It also normalizes common VCS suffixes like ".git".
-func readModulePath(root string) (string, error) {
-	gomod := filepath.Join(root, "go.mod")
-	b, err := os.ReadFile(gomod)
-	if err != nil {
-		return "", err
-	}
-	lines := strings.Split(string(b), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "module ") {
-			mod := strings.TrimSpace(strings.TrimPrefix(line, "module "))
-			// strip quotes if any
-			mod = strings.Trim(mod, "\"`")
-			// drop trailing .git if present
-			mod = strings.TrimSuffix(mod, ".git")
-			return mod, nil
-		}
-	}
-	return "", errors.New("module path not found in go.mod")
-}
-
-func relativeDir(modRoot, fullpath string) (string, error) {
-	slog.Debug("relativeDir", slog.String("modRoot", modRoot), slog.String("fullpath", fullpath))
-
-	rel, err := filepath.Rel(modRoot, fullpath)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Dir(rel), nil
 }

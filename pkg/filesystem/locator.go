@@ -3,6 +3,7 @@ package filesystem
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -89,4 +90,22 @@ func (*Locator) ReadModulePath(root string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("%w", ErrModulePathNotFound)
+}
+
+// RelativePackagePath returns the package path relative to the module root.
+// modRoot is a path from root dir to this project like: `/Users/username/project`
+// fullPath is a full path to package  like `/Users/username/project/pkg/destination`
+// returns relative path to package project/pkg/destination
+func (*Locator) RelativePackagePath(modRoot string, fullPath string) (string, error) {
+	slog.Debug("RelativePackagePath", slog.String("modRoot", modRoot), slog.String("fullPath", fullPath))
+	result, err := filepath.Rel(modRoot, fullPath)
+	if err != nil {
+		return "", err
+	}
+	slog.Debug(
+		"RelativePackagePath",
+		slog.String("result", result),
+	)
+
+	return filepath.Dir(result), nil
 }
