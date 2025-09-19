@@ -6,18 +6,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"go/ast"
 	"go/format"
-	"go/parser"
-	"go/token"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"text/template"
 	"unicode"
 
+	"github.com/dekey/enums/parser"
 	"github.com/dekey/enums/pkg/filesystem"
 )
 
@@ -67,7 +64,9 @@ func main() {
 		slog.String("gopackage", gopackage),
 	)
 
-	pkg, consts, err := parseConstsFromFile(goFile, goLine)
+	p := parser.NewParseFromFile()
+
+	pkg, consts, err := p.ParseFromFile(pkgDir, goFile, goLine)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -131,71 +130,6 @@ func fail(msg string) {
 	slog.Error("enum gen:", slog.String("message", msg))
 
 	os.Exit(2)
-}
-
-func parseConstsFromFile(gofile, goline string) (string, []string, error) {
-	var consts []string
-
-	pkgdir, err := os.Getwd() // current package directory
-	if err != nil {
-		return "", nil, err
-	}
-	fullpath := pkgdir + "/" + gofile
-	slog.Info(
-		"parseConstsFromFile",
-		slog.String("pkgdir", pkgdir),
-		slog.String("fullpath", fullpath),
-		slog.String("gofile", gofile),
-		slog.String("goline", goline),
-	)
-
-	line, err := strconv.Atoi(goline)
-	if err != nil {
-		return "", nil, err
-	}
-
-	// parse the Go file
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, fullpath, nil, parser.ParseComments)
-	if err != nil {
-		return "", nil, err
-	}
-
-	pkg := file.Name.Name
-
-	// walk declarations
-	for _, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		if genDecl.Tok != token.CONST {
-			continue
-		}
-
-		// find the const block *after* the //go:generate line
-		start := fset.Position(genDecl.Pos()).Line
-		if start <= line {
-			continue
-		}
-
-		slog.Info("Found const block at", slog.Int("line", start))
-
-		// extract constants only one block `const ()`
-		for _, spec := range genDecl.Specs {
-			valSpec, isValueSpec := spec.(*ast.ValueSpec)
-			if !isValueSpec {
-				slog.Debug("not a ValueSpec, got ", slog.Any("spec", spec))
-				continue
-			}
-
-			for _, name := range valSpec.Names {
-				consts = append(consts, name.Name)
-			}
-		}
-		break
-	}
-	return pkg, consts, nil
 }
 
 // exportName uppercases the first rune to create an exported identifier

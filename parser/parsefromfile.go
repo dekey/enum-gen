@@ -14,18 +14,20 @@ func NewParseFromFile() *ParseFromFile {
 	return &ParseFromFile{}
 }
 
-func (p *ParseFromFile) ParseFromFile(pkgdir string, gofile string, goline string) (string, []string, error) {
+func (p *ParseFromFile) ParseFromFile(packageDir string, goFile string, goLine string) (string, []string, error) {
 	var consts []string
 
-	fullPath := pkgdir + "/" + gofile
+	fullPath := packageDir + "/" + goFile
 
 	slog.Debug(
 		"Parsing file",
 		slog.String("fullPath", fullPath),
-		slog.String("goline", goline),
+		slog.String("packageDir", packageDir),
+		slog.String("goFile", goFile),
+		slog.String("goLine", goLine),
 	)
 
-	line, err := strconv.Atoi(goline)
+	line, err := strconv.Atoi(goLine)
 	if err != nil {
 		return "", nil, err
 	}
