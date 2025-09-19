@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
 	"errors"
 	"flag"
@@ -10,19 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
-	"unicode"
 
 	"github.com/dekey/enums/generator"
 	"github.com/dekey/enums/parser"
 	"github.com/dekey/enums/pkg/filesystem"
 )
-
-//go:embed test.tmpl
-var testTemplate string
-
-//go:embed base_test.tmpl
-var baseTestHelperTemplate string
 
 func main() {
 	// config ->
@@ -119,7 +110,7 @@ func main() {
 		slog.String("pkgDir", pkgDir),
 	)
 
-	if err := generateTests(pkg, pkgDir, enumsImport, name, consts); err != nil {
+	if err := g.GenerateTests(pkg, pkgDir, enumsImport, name, consts); err != nil {
 		fail(fmt.Sprintf("generate tests: %v", err))
 	}
 }
@@ -128,16 +119,6 @@ func fail(msg string) {
 	slog.Error("enum gen:", slog.String("message", msg))
 
 	os.Exit(2)
-}
-
-// exportName uppercases the first rune to create an exported identifier
-func exportName(s string) string {
-	if s == "" {
-		return s
-	}
-	r := []rune(s)
-	r[0] = unicode.ToUpper(r[0])
-	return string(r)
 }
 
 // readModulePath reads the module path from the go.mod at the given root directory.
@@ -161,67 +142,6 @@ func readModulePath(root string) (string, error) {
 		}
 	}
 	return "", errors.New("module path not found in go.mod")
-}
-
-func generateTests(pkg, pkgDir, importPath, name string, consts []string) error {
-	properName := exportName(name)
-	upperType := fmt.Sprintf("%sType", name)
-	properStructVar := fmt.Sprintf("%sTypes", properName) // EnvTypes
-
-	// Build the true cases for each constant
-	var casesBuilder strings.Builder
-	for _, c := range consts {
-		if c == "_" || c == "" {
-			continue
-		}
-		fmt.Fprintf(&casesBuilder, "\t\t%s.%s.%s(): true,\n", "enums", properStructVar, exportName(c))
-	}
-
-	// Execute enum test template
-	data := map[string]any{
-		"Pkg":             pkg,
-		"ImportPath":      importPath,
-		"ProperName":      properName,
-		"EnumsPkgName":    "enums",
-		"UpperType":       upperType,
-		"ProperStructVar": properStructVar,
-		"Cases":           casesBuilder.String(),
-	}
-
-	tmpl, err := template.New("test").Parse(testTemplate)
-	if err != nil {
-		return fmt.Errorf("parse test template: %w", err)
-	}
-	var testBuf bytes.Buffer
-	if err := tmpl.Execute(&testBuf, data); err != nil {
-		return fmt.Errorf("execute test template: %w", err)
-	}
-
-	// Write enum specific test
-	testFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen_test.go", strings.ToLower(name)))
-	if err := os.WriteFile(testFile, testBuf.Bytes(), 0o600); err != nil {
-		return fmt.Errorf("write test file: %w", err)
-	}
-
-	// Always (re)write base_test.go to ensure it's up-to-date
-	baseData := map[string]any{
-		"Pkg":          pkg,
-		"ImportPath":   importPath,
-		"EnumsPkgName": "enums",
-	}
-	baseTmpl, err := template.New("base").Parse(baseTestHelperTemplate)
-	if err != nil {
-		return fmt.Errorf("parse base template: %w", err)
-	}
-	var baseBuf bytes.Buffer
-	if err := baseTmpl.Execute(&baseBuf, baseData); err != nil {
-		return fmt.Errorf("execute base template: %w", err)
-	}
-	baseFile := filepath.Join(pkgDir, "base_test.go")
-	if err := os.WriteFile(baseFile, baseBuf.Bytes(), 0o600); err != nil {
-		return fmt.Errorf("write base_test: %w", err)
-	}
-	return nil
 }
 
 func relativeDir(modRoot, fullpath string) (string, error) {
