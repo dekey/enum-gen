@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"unicode"
@@ -38,6 +39,7 @@ func main() {
 		fail("--name flag is required")
 	}
 
+	goline := os.Getenv("GOLINE")
 	gofile := os.Getenv("GOFILE")
 	if gofile == "" {
 		fail("GOFILE is not set; run via `go generate`")
@@ -51,7 +53,7 @@ func main() {
 		slog.String("gofile", gofile),
 	)
 
-	pkg, consts, err := parseConstsFromFile(gofile, name)
+	pkg, consts, err := parseConstsFromFile(gofile, goline)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -95,80 +97,62 @@ func fail(msg string) {
 	os.Exit(2)
 }
 
-func parseConstsFromFile(filename, enumName string) (pkg string, consts []string, err error) {
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
+func parseConstsFromFile(gofile, goline string) (string, []string, error) {
+	var consts []string
+
+	pkgdir, err := os.Getwd() // current package directory
 	if err != nil {
 		return "", nil, err
 	}
-	pkg = file.Name.Name
+	slog.Info("parseConstsFromFile", slog.String("pkgdir", pkgdir))
+	fullpath := pkgdir + "/" + gofile
 
-	// 1) Find the matching `//go:generate enumgen --name=<enumName>` comment position
-	var genPos token.Pos
-	needle := "--name=" + enumName
-	for _, cg := range file.Comments {
-		for _, c := range cg.List {
-			text := strings.TrimSpace(strings.TrimPrefix(c.Text, "//"))
-			if strings.Contains(text, "go:generate") && strings.Contains(text, "enumgen") &&
-				strings.Contains(text, needle) {
-				genPos = c.Slash // position of the comment
-				break
-			}
-		}
-		if genPos != 0 {
-			break
-		}
-	}
-	if genPos == 0 {
-		return pkg, nil, fmt.Errorf("no matching go:generate directive for name %q", enumName)
+	line, err := strconv.Atoi(goline)
+	if err != nil {
+		return "", nil, err
 	}
 
-	// 2) Find the first const block (GenDecl with token.CONST) that appears AFTER this comment
-	var targetConst *ast.GenDecl
+	// parse the Go file
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, fullpath, nil, parser.ParseComments)
+	if err != nil {
+		return "", nil, err
+	}
+
+	pkg := file.Name.Name
+
+	// walk declarations
 	for _, decl := range file.Decls {
-		gen, ok := decl.(*ast.GenDecl)
-		if !ok || gen.Tok != token.CONST {
-			continue
-		}
-		if gen.Pos() > genPos {
-			targetConst = gen
-			break
-		}
-	}
-	if targetConst == nil {
-		return pkg, nil, errors.New("no const block found after go:generate directive")
-	}
-
-	// 3) Collect only string literal identifiers from this const block
-	seen := map[string]struct{}{}
-	for _, spec := range targetConst.Specs {
-		vs, ok := spec.(*ast.ValueSpec)
+		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
 			continue
 		}
-		if len(vs.Values) == 0 {
+		if genDecl.Tok != token.CONST {
 			continue
 		}
-		bl, ok := vs.Values[0].(*ast.BasicLit)
-		if !ok || bl.Kind != token.STRING {
-			continue
-		}
-		for _, ident := range vs.Names {
-			name := ident.Name
-			if name == "_" || name == "" {
-				continue
-			}
-			if _, ok := seen[name]; ok {
-				continue
-			}
-			seen[name] = struct{}{}
-			consts = append(consts, name)
-		}
-	}
-	if len(consts) == 0 {
-		return pkg, nil, errors.New("no const declarations found in the target block")
-	}
 
+		// find the const block *after* the //go:generate line
+		start := fset.Position(genDecl.Pos()).Line
+		if start <= line {
+			continue
+		}
+
+		slog.Info("Found const block at", slog.Int("line", start))
+
+		// extract constants only one block `const ()`
+		for _, spec := range genDecl.Specs {
+			valSpec, isValueSpec := spec.(*ast.ValueSpec)
+			if !isValueSpec {
+				slog.Debug("not a ValueSpec, got ", slog.Any("spec", spec))
+				continue
+			}
+
+			for _, name := range valSpec.Names {
+				consts = append(consts, name.Name)
+			}
+		}
+		break
+	}
 	return pkg, consts, nil
 }
 
