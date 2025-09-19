@@ -51,7 +51,7 @@ func main() {
 		slog.String("gofile", gofile),
 	)
 
-	pkg, consts, err := parseConstsFromFile(gofile)
+	pkg, consts, err := parseConstsFromFile(gofile, name)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -95,7 +95,7 @@ func fail(msg string) {
 	os.Exit(2)
 }
 
-func parseConstsFromFile(filename string) (pkg string, consts []string, err error) {
+func parseConstsFromFile(filename, enumName string) (pkg string, consts []string, err error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
@@ -103,39 +103,70 @@ func parseConstsFromFile(filename string) (pkg string, consts []string, err erro
 	}
 	pkg = file.Name.Name
 
-	seen := map[string]struct{}{}
+	// 1) Find the matching `//go:generate enumgen --name=<enumName>` comment position
+	var genPos token.Pos
+	needle := "--name=" + enumName
+	for _, cg := range file.Comments {
+		for _, c := range cg.List {
+			text := strings.TrimSpace(strings.TrimPrefix(c.Text, "//"))
+			if strings.Contains(text, "go:generate") && strings.Contains(text, "enumgen") &&
+				strings.Contains(text, needle) {
+				genPos = c.Slash // position of the comment
+				break
+			}
+		}
+		if genPos != 0 {
+			break
+		}
+	}
+	if genPos == 0 {
+		return pkg, nil, fmt.Errorf("no matching go:generate directive for name %q", enumName)
+	}
+
+	// 2) Find the first const block (GenDecl with token.CONST) that appears AFTER this comment
+	var targetConst *ast.GenDecl
 	for _, decl := range file.Decls {
 		gen, ok := decl.(*ast.GenDecl)
 		if !ok || gen.Tok != token.CONST {
 			continue
 		}
-		for _, spec := range gen.Specs {
-			vs, ok := spec.(*ast.ValueSpec)
-			if !ok {
+		if gen.Pos() > genPos {
+			targetConst = gen
+			break
+		}
+	}
+	if targetConst == nil {
+		return pkg, nil, errors.New("no const block found after go:generate directive")
+	}
+
+	// 3) Collect only string literal identifiers from this const block
+	seen := map[string]struct{}{}
+	for _, spec := range targetConst.Specs {
+		vs, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		if len(vs.Values) == 0 {
+			continue
+		}
+		bl, ok := vs.Values[0].(*ast.BasicLit)
+		if !ok || bl.Kind != token.STRING {
+			continue
+		}
+		for _, ident := range vs.Names {
+			name := ident.Name
+			if name == "_" || name == "" {
 				continue
 			}
-			// Only collect simple string constants
-			if len(vs.Values) == 0 {
+			if _, ok := seen[name]; ok {
 				continue
 			}
-			if _, ok := vs.Values[0].(*ast.BasicLit); !ok {
-				continue
-			}
-			for _, ident := range vs.Names {
-				name := ident.Name
-				if name == "_" || name == "" {
-					continue
-				}
-				if _, ok := seen[name]; ok {
-					continue
-				}
-				seen[name] = struct{}{}
-				consts = append(consts, name)
-			}
+			seen[name] = struct{}{}
+			consts = append(consts, name)
 		}
 	}
 	if len(consts) == 0 {
-		return pkg, nil, errors.New("no const declarations found")
+		return pkg, nil, errors.New("no const declarations found in the target block")
 	}
 
 	return pkg, consts, nil

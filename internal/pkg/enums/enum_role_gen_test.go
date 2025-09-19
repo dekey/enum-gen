@@ -10,17 +10,8 @@ import (
 func TestRole_Validate(t *testing.T) {
 	t.Parallel()
 	doEnumTest(t, map[enums.StringEnum]bool{
-		enums.RoleType("eggs"): false,
-		enums.RoleTypes.Prod(): true,
-		enums.RoleTypes.Gcpdev(): true,
-		enums.RoleTypes.Staging(): true,
-		enums.RoleTypes.Demo(): true,
-		enums.RoleTypes.Test(): true,
-		enums.RoleTypes.Dev(): true,
-		enums.RoleTypes.Lint(): true,
-		enums.RoleTypes.Debug(): true,
-		enums.RoleTypes.Ci(): true,
-		enums.RoleTypes.Admin(): true,
+		enums.RoleType("eggs"):   false,
+		enums.RoleTypes.Admin():  true,
 		enums.RoleTypes.Editor(): true,
 		enums.RoleTypes.Viewer(): true,
 	})

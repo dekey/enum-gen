@@ -10,18 +10,15 @@ import (
 func TestEnv_Validate(t *testing.T) {
 	t.Parallel()
 	doEnumTest(t, map[enums.StringEnum]bool{
-		enums.EnvType("eggs"): false,
-		enums.EnvTypes.Prod(): true,
-		enums.EnvTypes.Gcpdev(): true,
+		enums.EnvType("eggs"):    false,
+		enums.EnvTypes.Prod():    true,
+		enums.EnvTypes.Gcpdev():  true,
 		enums.EnvTypes.Staging(): true,
-		enums.EnvTypes.Demo(): true,
-		enums.EnvTypes.Test(): true,
-		enums.EnvTypes.Dev(): true,
-		enums.EnvTypes.Lint(): true,
-		enums.EnvTypes.Debug(): true,
-		enums.EnvTypes.Ci(): true,
-		enums.EnvTypes.Admin(): true,
-		enums.EnvTypes.Editor(): true,
-		enums.EnvTypes.Viewer(): true,
+		enums.EnvTypes.Demo():    true,
+		enums.EnvTypes.Test():    true,
+		enums.EnvTypes.Dev():     true,
+		enums.EnvTypes.Lint():    true,
+		enums.EnvTypes.Debug():   true,
+		enums.EnvTypes.Ci():      true,
 	})
 }

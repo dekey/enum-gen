@@ -20,8 +20,8 @@ const (
 	ci      = "ci"
 )
 
-
 // role.go
+//
 //go:generate enumgen --name=Role
 const (
 	admin  = "admin"

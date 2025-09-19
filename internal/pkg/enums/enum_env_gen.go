@@ -17,7 +17,7 @@ var ErrInvalidEnv = errors.New("invalid enum")
 
 func (e EnvType) IsValid() bool {
 	switch e {
-	case prod, gcpdev, staging, demo, test, dev, lint, debug, ci, admin, editor, viewer:
+	case prod, gcpdev, staging, demo, test, dev, lint, debug, ci:
 		return true
 	}
 	return false
@@ -43,12 +43,6 @@ func (t envTypes) Debug() EnvType { return debug }
 
 func (t envTypes) Ci() EnvType { return ci }
 
-func (t envTypes) Admin() EnvType { return admin }
-
-func (t envTypes) Editor() EnvType { return editor }
-
-func (t envTypes) Viewer() EnvType { return viewer }
-
 func (t envTypes) FromString(v string) (EnvType, error) {
 	switch v {
 	case prod:
@@ -69,12 +63,6 @@ func (t envTypes) FromString(v string) (EnvType, error) {
 		return t.Debug(), nil
 	case ci:
 		return t.Ci(), nil
-	case admin:
-		return t.Admin(), nil
-	case editor:
-		return t.Editor(), nil
-	case viewer:
-		return t.Viewer(), nil
 
 	}
 	return "", fmt.Errorf("env given [%s]: %w", v, ErrInvalidEnv)
