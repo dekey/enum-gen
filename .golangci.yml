@@ -1,0 +1,103 @@
+version: "2"
+run:
+  go: "1.23"
+  allow-parallel-runners: true
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - copyloopvar
+    - depguard
+    - dogsled
+    - dupl
+    - durationcheck
+    - errcheck
+    - errorlint
+    - exhaustive
+    - forcetypeassert
+    - funlen
+    - gochecknoinits
+    - goconst
+    - gocyclo
+    - goheader
+    - goprintffuncname
+    - gosec
+    - govet
+    - importas
+    - ineffassign
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nolintlint
+    - predeclared
+    - revive
+    - staticcheck
+    - testpackage
+    - tparallel
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  settings:
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+          allow:
+            - $gostd
+            - github.com/dekey/enums
+            - github.com/stretchr/testify
+          deny:
+            - pkg: io/ioutil
+              desc: not allowed
+            - pkg: github.com/pkg/errors
+              desc: outdated library, please use go-libraries/error_tracer
+    dupl:
+      threshold: 160
+    errcheck:
+      check-blank: true
+    errorlint:
+      errorf: false
+    funlen:
+      lines: 104
+      statements: 60
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - funlen
+        path: (.+)_test.go
+      - path: (.+)\.go$
+        text: Using the variable on range scope `tt` in function literal
+    paths:
+      - vendor
+      - terraform
+      - bin
+      - rpc
+      - internal/app/rpc/
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - terraform
+      - bin
+      - rpc
+      - internal/app/rpc/
+      - third_party$
+      - builtin$
+      - examples$
