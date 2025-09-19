@@ -31,29 +31,43 @@ var testTemplate string
 var baseTestHelperTemplate string
 
 func main() {
+	// config ->
 	var name string
-	flag.StringVar(&name, "name", "", "Enum base name (e.g., Env)")
+	var debug bool
+	flag.StringVar(&name, "name", "", "Enum base name (e.codeGenerator., Env)")
+	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 	flag.Parse()
+
+	if debug {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 
 	if name == "" {
 		fail("--name flag is required")
 	}
 
-	goline := os.Getenv("GOLINE")
-	gofile := os.Getenv("GOFILE")
-	if gofile == "" {
+	gopackage := os.Getenv("GOPACKAGE") // package name
+	goLine := os.Getenv("GOLINE")
+	goFile := os.Getenv("GOFILE")
+	if goFile == "" {
 		fail("GOFILE is not set; run via `go generate`")
 	}
 
-	pkgDir := filepath.Dir(gofile)
+	pkgDir, err := os.Getwd() // current package directory
+	if err != nil {
+		fail(err.Error())
+	}
 
 	slog.Info(
 		"Generating enum code",
 		slog.String("name", name),
-		slog.String("gofile", gofile),
+		slog.String("goFile", goFile),
+		slog.String("pkgDir", pkgDir),
+		slog.String("goLine", goLine),
+		slog.String("gopackage", gopackage),
 	)
 
-	pkg, consts, err := parseConstsFromFile(gofile, goline)
+	pkg, consts, err := parseConstsFromFile(goFile, goLine)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -71,12 +85,14 @@ func main() {
 	out := generateCode(pkg, name, consts)
 
 	outFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen.go", strings.ToLower(name)))
+	slog.Debug("Writing output", slog.String("outFile", outFile))
+
 	if err := os.WriteFile(outFile, out, 0o600); err != nil {
 		fail(fmt.Sprintf("write output: %v", err))
 	}
 
-	// Generate tests alongside code
-	modRoot, err := filesystem.FindRootDir("go.mod", 1)
+	locator := filesystem.NewLocator()
+	modRoot, err := locator.FindRootDir("go.mod", 1)
 	if err != nil {
 		fail(fmt.Sprintf("determine module root: %v", err))
 	}
@@ -84,7 +100,27 @@ func main() {
 	if err != nil {
 		fail(fmt.Sprintf("read module path: %v", err))
 	}
-	enumsImport := modulePath + "/internal/pkg/enums"
+
+	rel, err := relativeDir(modRoot, pkgDir)
+	if err != nil {
+		fail(fmt.Sprintf("determine relative dir: %v", err))
+	}
+
+	slog.Debug(
+		"relativeDir",
+		slog.String("rel", rel),
+		slog.String("gopackage", gopackage),
+	)
+
+	enumsImport := modulePath + "/" + rel + "/" + gopackage
+
+	slog.Debug(
+		"Enum import",
+		slog.String("modRoot", modRoot),
+		slog.String("enumsImport", enumsImport),
+		slog.String("modulePath", modulePath),
+		slog.String("pkgDir", pkgDir),
+	)
 
 	if err := generateTests(pkg, pkgDir, enumsImport, name, consts); err != nil {
 		fail(fmt.Sprintf("generate tests: %v", err))
@@ -104,8 +140,14 @@ func parseConstsFromFile(gofile, goline string) (string, []string, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	slog.Info("parseConstsFromFile", slog.String("pkgdir", pkgdir))
 	fullpath := pkgdir + "/" + gofile
+	slog.Info(
+		"parseConstsFromFile",
+		slog.String("pkgdir", pkgdir),
+		slog.String("fullpath", fullpath),
+		slog.String("gofile", gofile),
+		slog.String("goline", goline),
+	)
 
 	line, err := strconv.Atoi(goline)
 	if err != nil {
@@ -292,4 +334,14 @@ func generateTests(pkg, pkgDir, importPath, name string, consts []string) error 
 		return fmt.Errorf("write base_test: %w", err)
 	}
 	return nil
+}
+
+func relativeDir(modRoot, fullpath string) (string, error) {
+	slog.Debug("relativeDir", slog.String("modRoot", modRoot), slog.String("fullpath", fullpath))
+
+	rel, err := filepath.Rel(modRoot, fullpath)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Dir(rel), nil
 }

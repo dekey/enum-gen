@@ -7,7 +7,7 @@ type StringEnum interface {
 	String() string
 }
 
-//go:generate enumgen --name=Env
+//go:generate enumgen --name=Env --debug
 const (
 	prod    = "prod"
 	gcpdev  = "gcpdev"
@@ -20,7 +20,7 @@ const (
 	ci      = "ci"
 )
 
-//go:generate enumgen --name=Role
+//go:generate enumgen --name=Role --debug
 const (
 	admin  = "admin"
 	editor = "editor"
