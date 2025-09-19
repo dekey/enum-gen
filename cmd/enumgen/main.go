@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"go/format"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -14,12 +13,10 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/dekey/enums/generator"
 	"github.com/dekey/enums/parser"
 	"github.com/dekey/enums/pkg/filesystem"
 )
-
-//go:embed code.tmpl
-var codeTemplate string
 
 //go:embed test.tmpl
 var testTemplate string
@@ -65,6 +62,7 @@ func main() {
 	)
 
 	p := parser.NewParseFromFile()
+	g := generator.NewCodeGenerator()
 
 	pkg, consts, err := p.ParseFromFile(pkgDir, goFile, goLine)
 	if err != nil {
@@ -81,7 +79,7 @@ func main() {
 		slog.Any("consts", consts),
 	)
 
-	out := generateCode(pkg, name, consts)
+	out := g.GenerateCode(pkg, name, consts)
 
 	outFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen.go", strings.ToLower(name)))
 	slog.Debug("Writing output", slog.String("outFile", outFile))
@@ -163,50 +161,6 @@ func readModulePath(root string) (string, error) {
 		}
 	}
 	return "", errors.New("module path not found in go.mod")
-}
-
-func generateCode(pkg, name string, consts []string) []byte {
-	upperType := fmt.Sprintf("%sType", name)
-	lowerStruct := fmt.Sprintf("%sTypes", strings.ToLower(name))
-	properName := exportName(name)
-	lowerName := strings.ToLower(name)
-	properStructVar := fmt.Sprintf("%sTypes", properName) // e.g., EnvTypes
-
-	// filter consts
-	filtered := make([]string, 0, len(consts))
-	for _, c := range consts {
-		if c == "_" || c == "" {
-			continue
-		}
-		filtered = append(filtered, c)
-	}
-
-	data := map[string]any{
-		"Pkg":             pkg,
-		"UpperType":       upperType,
-		"LowerStruct":     lowerStruct,
-		"ProperStructVar": properStructVar,
-		"ProperName":      properName,
-		"LowerName":       lowerName,
-		"Consts":          filtered,
-	}
-
-	tmpl, err := template.New("code").Funcs(template.FuncMap{"export": exportName}).Parse(codeTemplate)
-	if err != nil {
-		return []byte("// template parse error: " + err.Error())
-	}
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return []byte("// template execute error: " + err.Error())
-	}
-
-	// gofmt
-	formatted, err := format.Source(buf.Bytes())
-	if err != nil {
-		// If formatting fails, return unformatted to aid debugging
-		return buf.Bytes()
-	}
-	return formatted
 }
 
 func generateTests(pkg, pkgDir, importPath, name string, consts []string) error {
