@@ -4,7 +4,7 @@ package enums_test
 import (
 	"testing"
 
-	"github.com/dekey/enums/internal/pkg/enums"
+	"github.com/dekey/enums/internal/examples/enums"
 	"github.com/stretchr/testify/require"
 )
 

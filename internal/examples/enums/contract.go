@@ -1,12 +1,5 @@
 package enums
 
-// StringEnum is a minimal interface for enum types used in tests
-// It is implemented by all generated enum types.
-type StringEnum interface {
-	IsValid() bool
-	String() string
-}
-
 //go:generate enumgen --name=Env --debug
 const (
 	prod    = "prod"

@@ -8,16 +8,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dekey/enums/generator"
-	"github.com/dekey/enums/parser"
+	"github.com/dekey/enums/internal/generator"
+	"github.com/dekey/enums/internal/parser"
 	"github.com/dekey/enums/pkg/filesystem"
 )
 
 func main() {
-	// config ->
 	var name string
 	var debug bool
-	flag.StringVar(&name, "name", "", "Enum base name (e.codeGenerator., Env)")
+	flag.StringVar(&name, "name", "", "This flag is responsible for naming files and structures")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 	flag.Parse()
 
@@ -29,19 +28,19 @@ func main() {
 		fail("--name flag is required")
 	}
 
-	gopackage := os.Getenv("GOPACKAGE") // package name
+	gopackage := os.Getenv("GOPACKAGE")
 	goLine := os.Getenv("GOLINE")
 	goFile := os.Getenv("GOFILE")
 	if goFile == "" {
 		fail("GOFILE is not set; run via `go generate`")
 	}
 
-	pkgDir, err := os.Getwd() // current package directory
+	pkgDir, err := os.Getwd()
 	if err != nil {
 		fail(err.Error())
 	}
 
-	slog.Info(
+	slog.Debug(
 		"Generating enum code",
 		slog.String("name", name),
 		slog.String("goFile", goFile),

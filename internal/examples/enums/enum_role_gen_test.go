@@ -4,14 +4,14 @@ package enums_test
 import (
 	"testing"
 
-	"github.com/dekey/enums/internal/pkg/enums"
+	"github.com/dekey/enums/internal/examples/enums"
 )
 
 func TestRole_Validate(t *testing.T) {
 	t.Parallel()
 	doEnumTest(t, map[enums.StringEnum]bool{
-		enums.RoleType("eggs"):   false,
-		enums.RoleTypes.Admin():  true,
+		enums.RoleType("eggs"): false,
+		enums.RoleTypes.Admin(): true,
 		enums.RoleTypes.Editor(): true,
 		enums.RoleTypes.Viewer(): true,
 	})

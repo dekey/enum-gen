@@ -87,7 +87,7 @@ func (cg *CodeGenerator) GenerateCode(pkg, name string, consts []string) []byte 
 func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, consts []string) error {
 	properName := cg.exportName(name)
 	upperType := fmt.Sprintf("%sType", name)
-	properStructVar := fmt.Sprintf("%sTypes", properName) // EnvTypes
+	properStructVar := fmt.Sprintf("%sTypes", properName)
 
 	// Build the true cases for each constant
 	var casesBuilder strings.Builder
