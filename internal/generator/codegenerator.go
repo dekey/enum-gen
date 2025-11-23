@@ -35,6 +35,7 @@ func NewCodeGenerator() *CodeGenerator {
 	}
 }
 
+// GenerateCode generates the enum code based on the provided package name, type name, and constants
 func (cg *CodeGenerator) GenerateCode(pkg, name string, consts []string) []byte {
 	upperType := fmt.Sprintf("%sType", name)
 	lowerStruct := fmt.Sprintf("%sTypes", strings.ToLower(name))
@@ -84,6 +85,7 @@ func (cg *CodeGenerator) GenerateCode(pkg, name string, consts []string) []byte 
 	return formatted
 }
 
+// GenerateTests generates test code for the enum type and writes it to a file
 func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, consts []string) error {
 	properName := cg.exportName(name)
 	upperType := fmt.Sprintf("%sType", name)
