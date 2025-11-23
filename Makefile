@@ -16,23 +16,9 @@ all:
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-##############
-### System ###
-##############
-load-debug-env: ## load debug.env environment file
-	$(call setup_env,debug)
-
-load-dev-env: ## load dev.env environment file
-	$(call setup_env,dev)
-
-load-test-env: ## load test.env environment file
-	$(call setup_env,test)
-
-yaml-lint: ## Run yaml linter locally
-	yamlfmt --conf ./.yamlfmt.yaml -lint .
-
-yaml-format: ## Run yaml formatter locally
-	yamlfmt --conf .yamlfmt.yaml .
+init:
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0
+	make add-vendor
 
 ##########
 ### GO ###
@@ -43,9 +29,6 @@ format: ## Run Go formatter locally
 
 lint: ## Run Go linter locally (used in pre-commit hook)
 	golangci-lint -c ".golangci.yml" run --allow-parallel-runners ./...
-
-lint-fix: ## Run Go linter locally & autofix issues
-	golangci-lint -c ".golangci.yml" run --fix --allow-parallel-runners ./...
 
 format-lint: ## Run Go linter locally & autofix issues
 	make format
@@ -68,6 +51,3 @@ coverage: ## show coverage
 
 build:
 	PATH=$(PWD)/bin:$$PATH go build -o /Users/dekey/go/bin/enumgen ./cmd/enumgen/main.go
-
-run-example:
-	GOFILE=internal/pkg/enums/contract.go go run ./cmd/enumgen --name=Env

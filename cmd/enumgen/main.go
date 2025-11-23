@@ -2,21 +2,19 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
-	"strings"
 
+	"github.com/dekey/enums/internal/app"
 	"github.com/dekey/enums/internal/generator"
 	"github.com/dekey/enums/internal/parser"
-	"github.com/dekey/enums/pkg/filesystem"
+	"github.com/dekey/go-pkg/filesystem"
 )
 
 func main() {
 	var name string
 	var debug bool
-	flag.StringVar(&name, "name", "", "This flag is responsible for naming files and structures")
+	flag.StringVar(&name, "name", "", "This variable is responsible for naming files and structures")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 	flag.Parse()
 
@@ -28,16 +26,16 @@ func main() {
 		fail("--name flag is required")
 	}
 
+	pkgDir, err := os.Getwd()
+	if err != nil {
+		fail(err.Error())
+	}
+
 	gopackage := os.Getenv("GOPACKAGE")
 	goLine := os.Getenv("GOLINE")
 	goFile := os.Getenv("GOFILE")
 	if goFile == "" {
 		fail("GOFILE is not set; run via `go generate`")
-	}
-
-	pkgDir, err := os.Getwd()
-	if err != nil {
-		fail(err.Error())
 	}
 
 	slog.Debug(
@@ -51,63 +49,18 @@ func main() {
 
 	p := parser.NewParseFromFile()
 	g := generator.NewCodeGenerator()
-
-	pkg, consts, err := p.ParseFromFile(pkgDir, goFile, goLine)
-	if err != nil {
-		fail(err.Error())
-	}
-	if len(consts) == 0 {
-		fail("no constants found to generate from")
-	}
-
-	slog.Info(
-		"Found constants",
-		slog.Int("count", len(consts)),
-		slog.String("package", pkg),
-		slog.Any("consts", consts),
-	)
-
-	out := g.GenerateCode(pkg, name, consts)
-
-	outFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen.go", strings.ToLower(name)))
-	slog.Debug("Writing output", slog.String("outFile", outFile))
-
-	if err := os.WriteFile(outFile, out, 0o600); err != nil {
-		fail(fmt.Sprintf("write output: %v", err))
-	}
-
 	locator := filesystem.NewLocator()
-	modRoot, err := locator.FindRootDir("go.mod", 1)
-	if err != nil {
-		fail(fmt.Sprintf("determine module root: %v", err))
-	}
-	modulePath, err := locator.ReadModulePath(modRoot)
-	if err != nil {
-		fail(fmt.Sprintf("read module path: %v", err))
-	}
 
-	rel, err := locator.RelativePackagePath(modRoot, pkgDir)
-	if err != nil {
-		fail(fmt.Sprintf("determine relative dir: %v", err))
-	}
-
-	enumsImport := modulePath + "/" + rel + "/" + gopackage
-
-	slog.Debug(
-		"Enum import",
-		slog.String("modRoot", modRoot),
-		slog.String("enumsImport", enumsImport),
-		slog.String("modulePath", modulePath),
-		slog.String("pkgDir", pkgDir),
-	)
-
-	if err := g.GenerateTests(pkg, pkgDir, enumsImport, name, consts); err != nil {
-		fail(fmt.Sprintf("generate tests: %v", err))
+	consoleApp := app.New(g, locator, p)
+	if err := consoleApp.Run(name, pkgDir, goFile, goLine, gopackage); err != nil {
+		fail(err.Error())
 	}
 }
 
 func fail(msg string) {
-	slog.Error("enum gen:", slog.String("message", msg))
-
+	slog.Error(
+		"error during generation code",
+		slog.String("message", msg),
+	)
 	os.Exit(2)
 }

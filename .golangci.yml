@@ -49,6 +49,7 @@ linters:
           allow:
             - $gostd
             - github.com/dekey/enums
+            - github.com/dekey/go-pkg/filesystem
             - github.com/stretchr/testify
           deny:
             - pkg: io/ioutil

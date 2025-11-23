@@ -1,0 +1,13 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "./"
+  schedule:
+    interval: daily
+    time: "04:00"
+  reviewers:
+    - "dekey"
+  commit-message:
+    prefix: "chore: bot"
+    include: "scope"
+  open-pull-requests-limit: 3
