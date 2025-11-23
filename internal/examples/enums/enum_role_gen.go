@@ -40,7 +40,6 @@ func (t roleTypes) FromString(v string) (RoleType, error) {
 		return t.Editor(), nil
 	case viewer:
 		return t.Viewer(), nil
-
 	}
 	return "", fmt.Errorf("role given [%s]: %w", v, ErrInvalidRole)
 }

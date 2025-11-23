@@ -64,7 +64,6 @@ func (t envTypes) FromString(v string) (EnvType, error) {
 		return t.Debug(), nil
 	case ci:
 		return t.Ci(), nil
-
 	}
 	return "", fmt.Errorf("env given [%s]: %w", v, ErrInvalidEnv)
 }

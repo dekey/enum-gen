@@ -34,7 +34,6 @@ func (t {{.LowerStruct}}) FromString(v string) ({{.UpperType}}, error) {
 	switch v {
 	{{range .Consts}}case {{.}}:
 		return t.{{export .}}(), nil
-	{{end}}
-	}
+	{{end}}}
 	return "", fmt.Errorf("{{.LowerName}} given [%s]: %w", v, ErrInvalid{{.ProperName}})
 }

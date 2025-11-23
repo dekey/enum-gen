@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -54,7 +55,8 @@ func (a *App) Run(name, pkgDir, goFile, goLine, gopackage string) error {
 		return fmt.Errorf("determine relative dir: %w", err)
 	}
 
-	enumsImport := modulePath + "/" + rel + "/" + gopackage
+	rel = filepath.ToSlash(rel)
+	enumsImport := path.Join(modulePath, rel, gopackage)
 	slog.Debug(
 		"Enum import",
 		slog.String("modRoot", modRoot),
