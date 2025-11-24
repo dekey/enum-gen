@@ -116,6 +116,7 @@ func TestGenerateTests_Table(t *testing.T) {
 		importPath string
 		typ        string
 		consts     []string
+		setup      func(t *testing.T, pkgDir string, typ string) map[string]string
 		assert     func(t *testing.T, err error, files map[string]string)
 	}{
 		{
@@ -124,6 +125,17 @@ func TestGenerateTests_Table(t *testing.T) {
 			importPath: "github.com/dekey/enums/internal/foo",
 			typ:        "My",
 			consts:     []string{"A", "B"},
+			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
+				files := map[string]string{}
+				filesEnum := getEnumFileBytes(t, pkgDir, typ)
+				files["enum"] = string(filesEnum)
+
+				filesBase, err := os.ReadFile(filepath.Join(pkgDir, "base_test.go"))
+				require.NoError(t, err)
+				files["base"] = string(filesBase)
+
+				return files
+			},
 			assert: func(t *testing.T, err error, files map[string]string) {
 				require.NoError(t, err)
 				enum := files["enum"]
@@ -141,6 +153,12 @@ func TestGenerateTests_Table(t *testing.T) {
 			importPath: "github.com/dekey/enums/internal/bar",
 			typ:        "Thing",
 			consts:     []string{"_", "X", ""},
+			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
+				files := map[string]string{}
+				enumFileBytes := getEnumFileBytes(t, pkgDir, typ)
+				files["enum"] = string(enumFileBytes)
+				return files
+			},
 			assert: func(t *testing.T, err error, files map[string]string) {
 				require.NoError(t, err)
 				enum := files["enum"]
@@ -155,6 +173,17 @@ func TestGenerateTests_Table(t *testing.T) {
 			importPath: "github.com/dekey/enums/internal/empt",
 			typ:        "",
 			consts:     []string{},
+			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
+				files := map[string]string{}
+				enumFileBytes := getEnumFileBytes(t, pkgDir, typ)
+				files["enum"] = string(enumFileBytes)
+
+				filesBase, err := os.ReadFile(filepath.Join(pkgDir, "base_test.go"))
+				require.NoError(t, err)
+				files["base"] = string(filesBase)
+
+				return files
+			},
 			assert: func(t *testing.T, err error, files map[string]string) {
 				require.NoError(t, err)
 				enum := files["enum"]
@@ -170,6 +199,12 @@ func TestGenerateTests_Table(t *testing.T) {
 			importPath: "github.com/dekey/enums/internal/underscore",
 			typ:        "my_type",
 			consts:     []string{"Alpha"},
+			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
+				files := map[string]string{}
+				enumFileBytes := getEnumFileBytes(t, pkgDir, typ)
+				files["enum"] = string(enumFileBytes)
+				return files
+			},
 			assert: func(t *testing.T, err error, files map[string]string) {
 				require.NoError(t, err)
 				enum := files["enum"]
@@ -183,27 +218,21 @@ func TestGenerateTests_Table(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			pkgDir := t.TempDir()
+			files := tc.setup(t, pkgDir, tc.typ)
+
 			cg := generator.NewCodeGenerator()
 			err := cg.GenerateTests(tc.pkg, pkgDir, tc.importPath, tc.typ, tc.consts)
-
-			files := map[string]string{}
-			enumFileName := fmt.Sprintf("enum_%s_gen_test.go", strings.ToLower(tc.typ))
-			enumPath := filepath.Join(pkgDir, enumFileName)
-			if b, e := os.ReadFile(enumPath); e == nil {
-				files["enum"] = string(b)
-			} else {
-				files["enum"] = ""
-			}
-			basePath := filepath.Join(pkgDir, "base_test.go")
-			if b, e := os.ReadFile(basePath); e == nil {
-				files["base"] = string(b)
-			} else {
-				files["base"] = ""
-			}
-
 			tc.assert(t, err, files)
 		})
 	}
+}
+
+func getEnumFileBytes(t *testing.T, pkgDir string, typ string) []byte {
+	enumFileName := fmt.Sprintf("enum_%s_gen_test.go", strings.ToLower(typ))
+	filesEnum, err := os.ReadFile(filepath.Join(pkgDir, enumFileName))
+	require.NoError(t, err)
+
+	return filesEnum
 }
 
 func exportName(s string) string {
