@@ -5,9 +5,9 @@ on:
     types: [ opened, synchronize, reopened ]
 
 env:
-  GOLANGCI_LINT_VERSION: v2.5.0
+  GOLANGCI_LINT_VERSION: v2.11.1
   ENV: lint
-  GOLANG_VERSION: '1.25'
+  GOLANG_VERSION: '1.26'
 
 jobs:
   lint:
