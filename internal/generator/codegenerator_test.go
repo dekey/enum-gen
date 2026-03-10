@@ -218,10 +218,10 @@ func TestGenerateTests_Table(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			pkgDir := t.TempDir()
-			files := tc.setup(t, pkgDir, tc.typ)
 
 			cg := generator.NewCodeGenerator()
 			err := cg.GenerateTests(tc.pkg, pkgDir, tc.importPath, tc.typ, tc.consts)
+			files := tc.setup(t, pkgDir, tc.typ)
 			tc.assert(t, err, files)
 		})
 	}

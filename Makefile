@@ -1,6 +1,6 @@
 .PHONY: help up down format lint gen-rpc format-lint load-debug-env load-dev-env
 
-## this variable expose environment variables into sub processes. So they will be available inside sub commands.
+## this variable exposes environment variables into sub processes. So they will be available inside sub commands.
 .EXPORT_ALL_VARIABLES:
 
 define setup_env
@@ -17,7 +17,7 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 init:
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.1
 	make add-vendor
 
 ##########
@@ -50,4 +50,4 @@ coverage: ## show coverage
 	go tool cover -html=cover.out
 
 build:
-	PATH=$(PWD)/bin:$$PATH go build -o ~/go/bin/enumgen  -ldflags="-X 'main.version=v0.0.1'" ./cmd/enumgen/main.go
+	PATH=$(PWD)/build:$$PATH go build -o ~/go/bin/enumgen  -ldflags="-X 'main.version=v0.0.1'" ./cmd/enumgen/main.go

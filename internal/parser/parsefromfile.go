@@ -59,7 +59,7 @@ func (p *ParseFromFile) ParseFromFile(packageDir string, goFile string, goLine s
 
 		slog.Info("Found const block", slog.Int("line", start))
 
-		// extract constants only one block `const ()`
+		// extract constants from only the first const block
 		for _, spec := range genDecl.Specs {
 			valSpec, isValueSpec := spec.(*ast.ValueSpec)
 			if !isValueSpec {

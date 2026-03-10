@@ -59,7 +59,7 @@ func main() {
 
 func fail(msg string) {
 	slog.Error(
-		"error during generation code",
+		"error during code generation",
 		slog.String("message", msg),
 	)
 	os.Exit(2)
