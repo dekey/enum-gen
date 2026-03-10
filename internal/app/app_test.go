@@ -28,7 +28,15 @@ func TestApp_Run(t *testing.T) {
 		name   string
 		args   args
 		setup  func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte)
-		assert func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, codeOut []byte, err error)
+		assert func(
+			t *testing.T,
+			tmp string,
+			gen *mocks.CodeGenerator,
+			par *mocks.Parser,
+			loc *mocks.Locator,
+			codeOut []byte,
+			err error,
+		)
 	}
 
 	mkTmp := func(t *testing.T) string {
@@ -76,13 +84,21 @@ func TestApp_Run(t *testing.T) {
 				// expect GenerateTests called
 				gen.
 					On("GenerateTests", "foo", args.pkgDir, mock.AnythingOfType("string"), "Role", mock.Anything).
-					Return(nil).Once().Run(func(args mock.Arguments) {
+					Return(nil).Once().Run(func(_ mock.Arguments) {
 					// no-op; we assert later
 				})
 
 				return gen, par, loc, codeOut
 			},
-			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, codeOut []byte, err error) {
+			assert: func(
+				t *testing.T,
+				tmp string,
+				gen *mocks.CodeGenerator,
+				par *mocks.Parser,
+				_ *mocks.Locator,
+				codeOut []byte,
+				err error,
+			) {
 				require.NoError(t, err)
 				// file must exist with correct name and contents
 				out := filepath.Join(tmp, "enum_role_gen.go")
@@ -102,10 +118,16 @@ func TestApp_Run(t *testing.T) {
 				var gotImport string
 				for _, c := range calls {
 					if c.Method == "GenerateTests" {
-						gotImport = c.Arguments[2].(string)
+						var ok bool
+						gotImport, ok = c.Arguments[2].(string)
+						require.True(t, ok)
 						// also assert other args
-						require.Equal(t, "foo", c.Arguments[0].(string))
-						require.Equal(t, "Role", c.Arguments[3].(string))
+						arg0, ok := c.Arguments[0].(string)
+						require.True(t, ok)
+						require.Equal(t, "foo", arg0)
+						arg3, ok := c.Arguments[3].(string)
+						require.True(t, ok)
+						require.Equal(t, "Role", arg3)
 						break
 					}
 				}
@@ -133,7 +155,15 @@ func TestApp_Run(t *testing.T) {
 
 				return gen, par, loc, nil
 			},
-			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, _ []byte, err error) {
+			assert: func(
+				t *testing.T,
+				_ string,
+				_ *mocks.CodeGenerator,
+				_ *mocks.Parser,
+				_ *mocks.Locator,
+				_ []byte,
+				err error,
+			) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "no constants found")
 			},
@@ -157,7 +187,15 @@ func TestApp_Run(t *testing.T) {
 
 				return gen, par, loc, nil
 			},
-			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, _ []byte, err error) {
+			assert: func(
+				t *testing.T,
+				_ string,
+				_ *mocks.CodeGenerator,
+				_ *mocks.Parser,
+				_ *mocks.Locator,
+				_ []byte,
+				err error,
+			) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "parse fail")
 			},
@@ -183,7 +221,15 @@ func TestApp_Run(t *testing.T) {
 
 				return gen, par, loc, nil
 			},
-			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, _ []byte, err error) {
+			assert: func(
+				t *testing.T,
+				_ string,
+				_ *mocks.CodeGenerator,
+				_ *mocks.Parser,
+				_ *mocks.Locator,
+				_ []byte,
+				err error,
+			) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "write output")
 			},
@@ -215,7 +261,15 @@ func TestApp_Run(t *testing.T) {
 
 				return gen, par, loc, []byte("env code")
 			},
-			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, _ []byte, err error) {
+			assert: func(
+				t *testing.T,
+				tmp string,
+				gen *mocks.CodeGenerator,
+				_ *mocks.Parser,
+				_ *mocks.Locator,
+				_ []byte,
+				err error,
+			) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "determine module root")
 				_, statErr := os.Stat(filepath.Join(tmp, "enum_env_gen.go"))
@@ -254,7 +308,15 @@ func TestApp_Run(t *testing.T) {
 
 				return gen, par, loc, nil
 			},
-			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, _ []byte, err error) {
+			assert: func(
+				t *testing.T,
+				_ string,
+				gen *mocks.CodeGenerator,
+				_ *mocks.Parser,
+				_ *mocks.Locator,
+				_ []byte,
+				err error,
+			) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "read module path")
 				gen.AssertNumberOfCalls(t, "GenerateTests", 0)
@@ -294,7 +356,15 @@ func TestApp_Run(t *testing.T) {
 
 				return gen, par, loc, nil
 			},
-			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, par *mocks.Parser, loc *mocks.Locator, _ []byte, err error) {
+			assert: func(
+				t *testing.T,
+				_ string,
+				gen *mocks.CodeGenerator,
+				_ *mocks.Parser,
+				_ *mocks.Locator,
+				_ []byte,
+				err error,
+			) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "determine relative dir")
 				gen.AssertNumberOfCalls(t, "GenerateTests", 0)

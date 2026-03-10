@@ -23,21 +23,25 @@ func main() {
 	}
 
 	if name == "" {
-		fail("--name flag is required")
+		slog.Error("error during code generation", slog.String("message", "--name flag is required"))
+		os.Exit(2)
 	}
 
 	pkgDir, err := os.Getwd()
 	if err != nil {
-		fail(err.Error())
+		slog.Error("error during code generation", slog.String("message", err.Error()))
+		os.Exit(2)
 	}
 
 	gopackage := os.Getenv("GOPACKAGE")
 	goLine := os.Getenv("GOLINE")
 	goFile := os.Getenv("GOFILE")
 	if goFile == "" {
-		fail("GOFILE is not set; run via `go generate`")
+		slog.Error("error during code generation", slog.String("message", "GOFILE is not set; run via `go generate`"))
+		os.Exit(2)
 	}
 
+	//nolint:gosec // in CLI context, we want to log the parameters for transparency
 	slog.Debug(
 		"Generating enum code",
 		slog.String("name", name),
@@ -53,14 +57,11 @@ func main() {
 
 	consoleApp := app.New(g, locator, p)
 	if err := consoleApp.Run(name, pkgDir, goFile, goLine, gopackage); err != nil {
-		fail(err.Error())
+		//nolint:gosec // in CLI context, logging errors from the tool is expected
+		slog.Error(
+			"error during code generation",
+			slog.String("message", err.Error()),
+		)
+		os.Exit(2)
 	}
-}
-
-func fail(msg string) {
-	slog.Error(
-		"error during code generation",
-		slog.String("message", msg),
-	)
-	os.Exit(2)
 }
