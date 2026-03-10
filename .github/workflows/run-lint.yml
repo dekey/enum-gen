@@ -1,0 +1,30 @@
+name: Lint
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+env:
+  GOLANGCI_LINT_VERSION: v2.11.1
+  ENV: lint
+  GOLANG_VERSION: '1.26'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+          check-latest: true
+          cache: true
+
+      - name: Run lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: "--timeout=5m0s"

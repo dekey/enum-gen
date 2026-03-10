@@ -1,0 +1,9 @@
+documentation:
+  - docs/**/*
+  - docs/*
+  - ./**/*.md
+  - ./*.md
+
+CI/CD:
+  - .github/**/*
+  - .github/*
