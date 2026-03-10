@@ -10,6 +10,8 @@ import (
 )
 
 func TestParseFromFile_Table(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name    string
 		content string
@@ -18,7 +20,7 @@ func TestParseFromFile_Table(t *testing.T) {
 		assert  func(t *testing.T, pkg string, consts []string, err error)
 	}{
 		{
-			name: "const block after go:generate is found",
+			name: "const block after go generate is found",
 			content: `package foo
 //go:generate echo
 // blank line
@@ -64,7 +66,7 @@ not valid go`,
 			},
 		},
 		{
-			name: "single const spec after line (no parens)",
+			name: "single const spec after line no parens",
 			content: `package zoo
 //go:generate echo
 const Y = 42
@@ -77,10 +79,59 @@ const Y = 42
 				require.Equal(t, []string{"Y"}, consts)
 			},
 		},
+		{
+			name: "non numeric goLine returns error",
+			content: `package foo
+const A = 1
+`,
+			goFile: "e.go",
+			goLine: "abc",
+			assert: func(t *testing.T, pkg string, consts []string, err error) {
+				require.Error(t, err)
+				require.Empty(t, pkg)
+				require.Empty(t, consts)
+			},
+		},
+		{
+			name: "zero goLine returns error",
+			content: `package foo
+const A = 1
+`,
+			goFile: "f.go",
+			goLine: "0",
+			assert: func(t *testing.T, pkg string, consts []string, err error) {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "goLine must be a positive integer")
+				require.Empty(t, pkg)
+				require.Empty(t, consts)
+			},
+		},
+		{
+			name: "only first const block after line is returned",
+			content: `package multi
+//go:generate echo
+const (
+ A = iota
+ B
+)
+const (
+ C = iota
+ D
+)
+`,
+			goFile: "g.go",
+			goLine: "2",
+			assert: func(t *testing.T, pkg string, consts []string, err error) {
+				require.NoError(t, err)
+				require.Equal(t, "multi", pkg)
+				require.Equal(t, []string{"A", "B"}, consts)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			fullPath := filepath.Join(dir, tc.goFile)
 			require.NoError(t, os.WriteFile(fullPath, []byte(tc.content), 0o600))

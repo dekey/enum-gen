@@ -2,6 +2,7 @@ package generator_test
 
 import (
 	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,25 +15,29 @@ import (
 
 func TestGenerateCode_Table(t *testing.T) {
 	t.Parallel()
+
 	testCases := []struct {
 		name   string
 		pkg    string
 		typ    string
 		consts []string
-		assert func(t *testing.T, got []byte)
+		assert func(t *testing.T, got []byte, err error)
 	}{
 		{
 			name:   "generates code for basic constants",
 			pkg:    "foo",
 			typ:    "My",
 			consts: []string{"A", "B"},
-			assert: func(t *testing.T, got []byte) {
+			assert: func(t *testing.T, got []byte, err error) {
+				require.NoError(t, err)
 				s := string(got)
 				require.Contains(t, s, "package foo")
 				require.Contains(t, s, "MyType")
 				require.Contains(t, s, "A")
 				require.Contains(t, s, "B")
 				require.Contains(t, s, "MyTypes")
+				_, fmtErr := format.Source(got)
+				require.NoError(t, fmtErr, "output must be valid Go")
 			},
 		},
 		{
@@ -40,12 +45,15 @@ func TestGenerateCode_Table(t *testing.T) {
 			pkg:    "bar",
 			typ:    "Thing",
 			consts: []string{"_", "X", ""},
-			assert: func(t *testing.T, got []byte) {
+			assert: func(t *testing.T, got []byte, err error) {
+				require.NoError(t, err)
 				s := string(got)
 				require.Contains(t, s, "package bar")
 				require.Contains(t, s, "ThingType")
 				require.Contains(t, s, "X")
 				require.NotContains(t, s, "_")
+				_, fmtErr := format.Source(got)
+				require.NoError(t, fmtErr, "output must be valid Go")
 			},
 		},
 		{
@@ -53,11 +61,14 @@ func TestGenerateCode_Table(t *testing.T) {
 			pkg:    "baz",
 			typ:    "example",
 			consts: []string{"One"},
-			assert: func(t *testing.T, got []byte) {
+			assert: func(t *testing.T, got []byte, err error) {
+				require.NoError(t, err)
 				s := string(got)
 				require.Contains(t, s, "package baz")
 				require.Contains(t, s, fmt.Sprintf("%sType", exportName("example")))
 				require.Contains(t, s, "One")
+				_, fmtErr := format.Source(got)
+				require.NoError(t, fmtErr, "output must be valid Go")
 			},
 		},
 		{
@@ -65,10 +76,13 @@ func TestGenerateCode_Table(t *testing.T) {
 			pkg:    "empt",
 			typ:    "",
 			consts: []string{},
-			assert: func(t *testing.T, got []byte) {
+			assert: func(t *testing.T, got []byte, err error) {
+				require.NoError(t, err)
 				s := string(got)
 				require.Contains(t, s, "package empt")
 				require.Contains(t, s, "Type")
+				_, fmtErr := format.Source(got)
+				require.NoError(t, fmtErr, "output must be valid Go")
 			},
 		},
 		{
@@ -76,11 +90,14 @@ func TestGenerateCode_Table(t *testing.T) {
 			pkg:    "underscore",
 			typ:    "my_type",
 			consts: []string{"Alpha"},
-			assert: func(t *testing.T, got []byte) {
+			assert: func(t *testing.T, got []byte, err error) {
+				require.NoError(t, err)
 				s := string(got)
 				require.Contains(t, s, "package underscore")
 				require.Contains(t, s, "My_typeType")
 				require.Contains(t, s, "Alpha")
+				_, fmtErr := format.Source(got)
+				require.NoError(t, fmtErr, "output must be valid Go")
 			},
 		},
 		{
@@ -88,60 +105,55 @@ func TestGenerateCode_Table(t *testing.T) {
 			pkg:    "exported",
 			typ:    "Example",
 			consts: []string{"One", "Two"},
-			assert: func(t *testing.T, got []byte) {
+			assert: func(t *testing.T, got []byte, err error) {
+				require.NoError(t, err)
 				s := string(got)
 				require.Contains(t, s, "package exported")
 				require.Contains(t, s, "ExampleType")
 				require.Contains(t, s, "One")
 				require.Contains(t, s, "Two")
+				_, fmtErr := format.Source(got)
+				require.NoError(t, fmtErr, "output must be valid Go")
 			},
 		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := testCases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			cg := generator.NewCodeGenerator()
-			got := cg.GenerateCode(tc.pkg, tc.typ, tc.consts)
-			tc.assert(t, got)
+			got, err := cg.GenerateCode(tc.pkg, tc.typ, tc.consts)
+			tc.assert(t, got, err)
 		})
 	}
 }
 
 func TestGenerateTests_Table(t *testing.T) {
 	t.Parallel()
+
 	testCases := []struct {
 		name       string
 		pkg        string
+		pkgDir     string
 		importPath string
 		typ        string
 		consts     []string
-		setup      func(t *testing.T, pkgDir string, typ string) map[string]string
-		assert     func(t *testing.T, err error, files map[string]string)
+		assert     func(t *testing.T, pkgDir, typ string, err error)
 	}{
 		{
 			name:       "generates enum and base tests for basic constants",
 			pkg:        "foo",
+			pkgDir:     t.TempDir(),
 			importPath: "github.com/dekey/enums/internal/foo",
 			typ:        "My",
 			consts:     []string{"A", "B"},
-			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
-				files := map[string]string{}
-				filesEnum := getEnumFileBytes(t, pkgDir, typ)
-				files["enum"] = string(filesEnum)
-
-				filesBase, err := os.ReadFile(filepath.Join(pkgDir, "base_test.go"))
+			assert: func(t *testing.T, pkgDir, typ string, err error) {
 				require.NoError(t, err)
-				files["base"] = string(filesBase)
-
-				return files
-			},
-			assert: func(t *testing.T, err error, files map[string]string) {
-				require.NoError(t, err)
-				enum := files["enum"]
-				base := files["base"]
+				enum := string(getEnumFileBytes(t, pkgDir, typ))
+				base := readFile(t, filepath.Join(pkgDir, "base_test.go"))
 				require.Contains(t, enum, "enums")
-				require.Contains(t, enum, fmt.Sprintf("%sTypes", exportName("My")))
+				require.Contains(t, enum, fmt.Sprintf("%sTypes", exportName(typ)))
 				require.Contains(t, enum, "A")
 				require.Contains(t, enum, "B")
 				require.Contains(t, base, "doEnumTest")
@@ -150,45 +162,30 @@ func TestGenerateTests_Table(t *testing.T) {
 		{
 			name:       "filters out underscore and empty constants",
 			pkg:        "bar",
+			pkgDir:     t.TempDir(),
 			importPath: "github.com/dekey/enums/internal/bar",
 			typ:        "Thing",
 			consts:     []string{"_", "X", ""},
-			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
-				files := map[string]string{}
-				enumFileBytes := getEnumFileBytes(t, pkgDir, typ)
-				files["enum"] = string(enumFileBytes)
-				return files
-			},
-			assert: func(t *testing.T, err error, files map[string]string) {
+			assert: func(t *testing.T, pkgDir, typ string, err error) {
 				require.NoError(t, err)
-				enum := files["enum"]
-				require.Contains(t, enum, fmt.Sprintf("%sTypes", exportName("Thing")))
+				enum := string(getEnumFileBytes(t, pkgDir, typ))
+				require.Contains(t, enum, fmt.Sprintf("%sTypes", exportName(typ)))
 				require.Contains(t, enum, "X")
-				require.NotContains(t, enum, "\"_\"") // ensure underscore constant wasn't emitted
+				require.NotContains(t, enum, "\"_\"")
 			},
 		},
 		{
 			name:       "handles empty type name and no constants",
 			pkg:        "empt",
+			pkgDir:     t.TempDir(),
 			importPath: "github.com/dekey/enums/internal/empt",
 			typ:        "",
 			consts:     []string{},
-			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
-				files := map[string]string{}
-				enumFileBytes := getEnumFileBytes(t, pkgDir, typ)
-				files["enum"] = string(enumFileBytes)
-
-				filesBase, err := os.ReadFile(filepath.Join(pkgDir, "base_test.go"))
+			assert: func(t *testing.T, pkgDir, typ string, err error) {
 				require.NoError(t, err)
-				files["base"] = string(filesBase)
-
-				return files
-			},
-			assert: func(t *testing.T, err error, files map[string]string) {
-				require.NoError(t, err)
-				enum := files["enum"]
-				base := files["base"]
-				require.Contains(t, enum, "Type") // generator composes "Type" even for empty name
+				enum := string(getEnumFileBytes(t, pkgDir, typ))
+				base := readFile(t, filepath.Join(pkgDir, "base_test.go"))
+				require.Contains(t, enum, "Type")
 				require.Contains(t, base, "doEnumTest")
 				require.NotEmpty(t, enum)
 			},
@@ -196,43 +193,55 @@ func TestGenerateTests_Table(t *testing.T) {
 		{
 			name:       "uppercases first rune preserving underscore in type name",
 			pkg:        "underscore",
+			pkgDir:     t.TempDir(),
 			importPath: "github.com/dekey/enums/internal/underscore",
 			typ:        "my_type",
 			consts:     []string{"Alpha"},
-			setup: func(t *testing.T, pkgDir string, typ string) map[string]string {
-				files := map[string]string{}
-				enumFileBytes := getEnumFileBytes(t, pkgDir, typ)
-				files["enum"] = string(enumFileBytes)
-				return files
-			},
-			assert: func(t *testing.T, err error, files map[string]string) {
+			assert: func(t *testing.T, pkgDir, typ string, err error) {
 				require.NoError(t, err)
-				enum := files["enum"]
-				require.Contains(t, enum, fmt.Sprintf("%sTypes", exportName("my_type")))
+				enum := string(getEnumFileBytes(t, pkgDir, typ))
+				require.Contains(t, enum, fmt.Sprintf("%sTypes", exportName(typ)))
 				require.Contains(t, enum, "Alpha")
+			},
+		},
+		{
+			name:       "write error when directory does not exist",
+			pkg:        "foo",
+			pkgDir:     filepath.Join(t.TempDir(), "does-not-exist"),
+			importPath: "github.com/dekey/enums/internal/foo",
+			typ:        "Role",
+			consts:     []string{"A"},
+			assert: func(t *testing.T, _ string, _ string, err error) {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "write test file")
 			},
 		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := testCases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			pkgDir := t.TempDir()
-
 			cg := generator.NewCodeGenerator()
-			err := cg.GenerateTests(tc.pkg, pkgDir, tc.importPath, tc.typ, tc.consts)
-			files := tc.setup(t, pkgDir, tc.typ)
-			tc.assert(t, err, files)
+			err := cg.GenerateTests(tc.pkg, tc.pkgDir, tc.importPath, tc.typ, tc.consts)
+			tc.assert(t, tc.pkgDir, tc.typ, err)
 		})
 	}
 }
 
 func getEnumFileBytes(t *testing.T, pkgDir string, typ string) []byte {
+	t.Helper()
 	enumFileName := fmt.Sprintf("enum_%s_gen_test.go", strings.ToLower(typ))
-	filesEnum, err := os.ReadFile(filepath.Join(pkgDir, enumFileName))
+	b, err := os.ReadFile(filepath.Join(pkgDir, enumFileName))
 	require.NoError(t, err)
+	return b
+}
 
-	return filesEnum
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return string(b)
 }
 
 func exportName(s string) string {

@@ -35,3 +35,4 @@ cmd/excluded
 .mcp.json
 .claude
 .serena
+CLAUDE.md

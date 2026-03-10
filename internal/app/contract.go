@@ -2,7 +2,7 @@ package app
 
 //go:generate mockery --name CodeGenerator --filename codegenerator.go --structname CodeGenerator --output internal/mocks
 type CodeGenerator interface {
-	GenerateCode(pkg, name string, consts []string) []byte
+	GenerateCode(pkg, name string, consts []string) ([]byte, error)
 	GenerateTests(pkg, pkgDir, importPath, name string, consts []string) error
 }
 

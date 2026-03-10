@@ -36,7 +36,7 @@ func NewCodeGenerator() *CodeGenerator {
 }
 
 // GenerateCode generates the enum code based on the provided package name, type name, and constants
-func (cg *CodeGenerator) GenerateCode(pkg, name string, consts []string) []byte {
+func (cg *CodeGenerator) GenerateCode(pkg, name string, consts []string) ([]byte, error) {
 	upperType := fmt.Sprintf("%sType", name)
 	lowerStruct := fmt.Sprintf("%sTypes", strings.ToLower(name))
 
@@ -69,20 +69,18 @@ func (cg *CodeGenerator) GenerateCode(pkg, name string, consts []string) []byte 
 		Funcs(template.FuncMap{"export": cg.exportName}).
 		Parse(cg.codeTemplate)
 	if err != nil {
-		return []byte("// template parse error: " + err.Error())
+		return nil, fmt.Errorf("parse code template: %w", err)
 	}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		return []byte("// template execute error: " + err.Error())
+		return nil, fmt.Errorf("execute code template: %w", err)
 	}
 
-	// gofmt
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		// If formatting fails, return unformatted to aid debugging
-		return buf.Bytes()
+		return nil, fmt.Errorf("format source: %w", err)
 	}
-	return formatted
+	return formatted, nil
 }
 
 // GenerateTests generates test code for the enum type and writes it to a file

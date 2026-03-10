@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	apppkg "github.com/dekey/enums/internal/app"
@@ -24,146 +23,79 @@ func TestApp_Run(t *testing.T) {
 		goPkg    string
 	}
 
-	type testCases struct {
-		name   string
-		args   args
-		setup  func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte)
-		assert func(
-			t *testing.T,
-			tmp string,
-			gen *mocks.CodeGenerator,
-			par *mocks.Parser,
-			loc *mocks.Locator,
-			codeOut []byte,
-			err error,
-		)
+	type testCase struct {
+		name    string
+		args    args
+		genMock func(t *testing.T, args args, codeOut []byte) *mocks.CodeGenerator
+		parMock func(t *testing.T, args args) *mocks.Parser
+		locMock func(t *testing.T, args args) *mocks.Locator
+		codeOut []byte
+		assert  func(t *testing.T, tmp string, gen *mocks.CodeGenerator, codeOut []byte, err error)
 	}
 
-	mkTmp := func(t *testing.T) string {
-		t.Helper()
-		d := t.TempDir()
-		return d
-	}
-
-	cases := []testCases{
+	testCases := []testCase{
 		{
 			name: "success writes file and generates tests",
 			args: args{
 				enumName: "Role",
-				pkgDir:   mkTmp(t),
+				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
 				goPkg:    "enums",
 			},
-			setup: func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte) {
+			codeOut: []byte("generated code for Role"),
+			genMock: func(t *testing.T, args args, codeOut []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
-				par := mocks.NewParser(t)
-				loc := mocks.NewLocator(t)
-
-				// parser returns pkg and consts
-				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
-					Return("foo", []string{"RoleAdmin", "RoleUser"}, nil).
+				gen.On("GenerateCode", "foo", "Role", mock.Anything).Return(codeOut, nil).Once()
+				gen.On("GenerateTests", "foo", args.pkgDir, "github.com/example/mod/internal/foo/enums", "Role", mock.Anything).
+					Return(nil).
 					Once()
-
-				// generator returns code
-				codeOut := []byte("generated code for Role")
-				gen.On("GenerateCode", "foo", "Role", mock.Anything).Return(codeOut).Once()
-
-				// locator pathing for GenerateTests
-				modRoot := filepath.Join(args.pkgDir, "modroot")
-				loc.On("FindRootDir", "go.mod", 1).
-					Return(modRoot, nil).
-					Once()
-				loc.On("ReadModulePath", modRoot).
-					Return("github.com/example/mod", nil).
-					Once()
-				loc.On("RelativePackagePath", modRoot, args.pkgDir).
-					Return("internal/foo", nil).
-					Once()
-
-				// expect GenerateTests called
-				gen.
-					On("GenerateTests", "foo", args.pkgDir, mock.AnythingOfType("string"), "Role", mock.Anything).
-					Return(nil).Once().Run(func(_ mock.Arguments) {
-					// no-op; we assert later
-				})
-
-				return gen, par, loc, codeOut
+				return gen
 			},
-			assert: func(
-				t *testing.T,
-				tmp string,
-				gen *mocks.CodeGenerator,
-				par *mocks.Parser,
-				_ *mocks.Locator,
-				codeOut []byte,
-				err error,
-			) {
+			parMock: func(t *testing.T, args args) *mocks.Parser {
+				par := mocks.NewParser(t)
+				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
+					Return("foo", []string{"RoleAdmin", "RoleUser"}, nil).Once()
+				return par
+			},
+			locMock: func(t *testing.T, args args) *mocks.Locator {
+				loc := mocks.NewLocator(t)
+				modRoot := filepath.Join(args.pkgDir, "modroot")
+				loc.On("FindRootDir", "go.mod", 1).Return(modRoot, nil).Once()
+				loc.On("ReadModulePath", modRoot).Return("github.com/example/mod", nil).Once()
+				loc.On("RelativePackagePath", modRoot, args.pkgDir).Return("internal/foo", nil).Once()
+				return loc
+			},
+			assert: func(t *testing.T, tmp string, _ *mocks.CodeGenerator, codeOut []byte, err error) {
 				require.NoError(t, err)
-				// file must exist with correct name and contents
 				out := filepath.Join(tmp, "enum_role_gen.go")
 				b, readErr := os.ReadFile(out)
 				require.NoError(t, readErr)
 				require.Equal(t, string(codeOut), string(b))
-
-				// parser captured args
-				par.AssertCalled(t, "ParseFromFile", tmp, "file.go", "10")
-
-				// generator called with expected import
-				gen.AssertNumberOfCalls(t, "GenerateTests", 1)
-				// import path should use forward slashes and append goPkg
-				importPath := "github.com/example/mod/internal/foo/enums"
-				// capture the argument from the call history
-				calls := gen.Calls
-				var gotImport string
-				for _, c := range calls {
-					if c.Method == "GenerateTests" {
-						var ok bool
-						gotImport, ok = c.Arguments[2].(string)
-						require.True(t, ok)
-						// also assert other args
-						arg0, ok := c.Arguments[0].(string)
-						require.True(t, ok)
-						require.Equal(t, "foo", arg0)
-						arg3, ok := c.Arguments[3].(string)
-						require.True(t, ok)
-						require.Equal(t, "Role", arg3)
-						break
-					}
-				}
-				// Normalize to forward slashes just in case
-				gotImport = strings.ReplaceAll(gotImport, "\\", "/")
-				require.Equal(t, importPath, gotImport)
 			},
 		},
 		{
 			name: "no constants results in error",
 			args: args{
 				enumName: "Role",
-				pkgDir:   mkTmp(t),
+				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
 				goPkg:    "enums",
 			},
-			setup: func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte) {
-				gen := mocks.NewCodeGenerator(t)
+			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
+				return mocks.NewCodeGenerator(t)
+			},
+			parMock: func(t *testing.T, args args) *mocks.Parser {
 				par := mocks.NewParser(t)
-				loc := mocks.NewLocator(t)
-
 				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
 					Return("foo", []string{}, nil).Once()
-
-				return gen, par, loc, nil
+				return par
 			},
-			assert: func(
-				t *testing.T,
-				_ string,
-				_ *mocks.CodeGenerator,
-				_ *mocks.Parser,
-				_ *mocks.Locator,
-				_ []byte,
-				err error,
-			) {
+			locMock: func(t *testing.T, _ args) *mocks.Locator {
+				return mocks.NewLocator(t)
+			},
+			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "no constants found")
 			},
@@ -172,30 +104,24 @@ func TestApp_Run(t *testing.T) {
 			name: "parser error bubbles up",
 			args: args{
 				enumName: "Role",
-				pkgDir:   mkTmp(t),
+				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
 				goPkg:    "enums",
 			},
-			setup: func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte) {
-				gen := mocks.NewCodeGenerator(t)
+			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
+				return mocks.NewCodeGenerator(t)
+			},
+			parMock: func(t *testing.T, args args) *mocks.Parser {
 				par := mocks.NewParser(t)
-				loc := mocks.NewLocator(t)
-
 				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
 					Return("", nil, errors.New("parse fail")).Once()
-
-				return gen, par, loc, nil
+				return par
 			},
-			assert: func(
-				t *testing.T,
-				_ string,
-				_ *mocks.CodeGenerator,
-				_ *mocks.Parser,
-				_ *mocks.Locator,
-				_ []byte,
-				err error,
-			) {
+			locMock: func(t *testing.T, _ args) *mocks.Locator {
+				return mocks.NewLocator(t)
+			},
+			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "parse fail")
 			},
@@ -204,72 +130,89 @@ func TestApp_Run(t *testing.T) {
 			name: "write file error when pkgDir does not exist",
 			args: args{
 				enumName: "Role",
-				pkgDir:   filepath.Join(mkTmp(t), "does-not-exist"),
+				pkgDir:   filepath.Join(t.TempDir(), "does-not-exist"),
 				goFile:   "file.go",
 				goLine:   "10",
 				goPkg:    "enums",
 			},
-			setup: func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte) {
+			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
+				gen.On("GenerateCode", "foo", "Role", mock.Anything).
+					Return([]byte("code"), nil).Once()
+				return gen
+			},
+			parMock: func(t *testing.T, args args) *mocks.Parser {
 				par := mocks.NewParser(t)
-				loc := mocks.NewLocator(t)
-
 				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
 					Return("foo", []string{"A"}, nil).Once()
-				gen.On("GenerateCode", "foo", "Role", mock.Anything).
-					Return([]byte("code")).Once()
-
-				return gen, par, loc, nil
+				return par
 			},
-			assert: func(
-				t *testing.T,
-				_ string,
-				_ *mocks.CodeGenerator,
-				_ *mocks.Parser,
-				_ *mocks.Locator,
-				_ []byte,
-				err error,
-			) {
+			locMock: func(t *testing.T, _ args) *mocks.Locator {
+				return mocks.NewLocator(t)
+			},
+			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "write output")
+			},
+		},
+		{
+			name: "generate code error surfaces",
+			args: args{
+				enumName: "Role",
+				pkgDir:   t.TempDir(),
+				goFile:   "file.go",
+				goLine:   "10",
+				goPkg:    "enums",
+			},
+			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
+				gen := mocks.NewCodeGenerator(t)
+				gen.On("GenerateCode", "foo", "Role", mock.Anything).
+					Return([]byte(nil), errors.New("generate code fail")).Once()
+				return gen
+			},
+			parMock: func(t *testing.T, args args) *mocks.Parser {
+				par := mocks.NewParser(t)
+				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
+					Return("foo", []string{"A"}, nil).Once()
+				return par
+			},
+			locMock: func(t *testing.T, _ args) *mocks.Locator {
+				return mocks.NewLocator(t)
+			},
+			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "generate code fail")
 			},
 		},
 		{
 			name: "locator FindRootDir error surfaces",
 			args: args{
 				enumName: "Env",
-				pkgDir:   mkTmp(t),
+				pkgDir:   t.TempDir(),
 				goFile:   "env.go",
 				goLine:   "5",
 				goPkg:    "enums",
 			},
-			setup: func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte) {
+			codeOut: []byte("env code"),
+			genMock: func(t *testing.T, _ args, codeOut []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
-				par := mocks.NewParser(t)
-				loc := mocks.NewLocator(t)
-
-				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
-					Return("foo", []string{"EnvProd"}, nil).
-					Once()
 				gen.On("GenerateCode", "foo", "Env", mock.Anything).
-					Return([]byte("env code")).
-					Once()
-
-				loc.On("FindRootDir", "go.mod", 1).
-					Return("", errors.New("determine module root")).
-					Once()
-
-				return gen, par, loc, []byte("env code")
+					Return(codeOut, nil).Once()
+				return gen
 			},
-			assert: func(
-				t *testing.T,
-				tmp string,
-				gen *mocks.CodeGenerator,
-				_ *mocks.Parser,
-				_ *mocks.Locator,
-				_ []byte,
-				err error,
-			) {
+			parMock: func(t *testing.T, args args) *mocks.Parser {
+				par := mocks.NewParser(t)
+				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
+					Return("foo", []string{"EnvProd"}, nil).Once()
+				return par
+			},
+			locMock: func(t *testing.T, _ args) *mocks.Locator {
+				loc := mocks.NewLocator(t)
+				loc.On("FindRootDir", "go.mod", 1).
+					Return("", errors.New("determine module root")).Once()
+				return loc
+			},
+			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, _ []byte, err error) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "determine module root")
 				_, statErr := os.Stat(filepath.Join(tmp, "enum_env_gen.go"))
@@ -281,42 +224,32 @@ func TestApp_Run(t *testing.T) {
 			name: "locator ReadModulePath error surfaces",
 			args: args{
 				enumName: "Role",
-				pkgDir:   mkTmp(t),
+				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
 				goPkg:    "enums",
 			},
-			setup: func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte) {
+			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
-				par := mocks.NewParser(t)
-				loc := mocks.NewLocator(t)
-
-				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
-					Return("foo", []string{"X"}, nil).
-					Once()
 				gen.On("GenerateCode", "foo", "Role", mock.Anything).
-					Return([]byte("code")).
-					Once()
-
-				modRoot := filepath.Join(args.pkgDir, "modroot")
-				loc.On("FindRootDir", "go.mod", 1).
-					Return(modRoot, nil).
-					Once()
-				loc.On("ReadModulePath", modRoot).
-					Return("", errors.New("read module path")).
-					Once()
-
-				return gen, par, loc, nil
+					Return([]byte("code"), nil).Once()
+				return gen
 			},
-			assert: func(
-				t *testing.T,
-				_ string,
-				gen *mocks.CodeGenerator,
-				_ *mocks.Parser,
-				_ *mocks.Locator,
-				_ []byte,
-				err error,
-			) {
+			parMock: func(t *testing.T, args args) *mocks.Parser {
+				par := mocks.NewParser(t)
+				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
+					Return("foo", []string{"X"}, nil).Once()
+				return par
+			},
+			locMock: func(t *testing.T, args args) *mocks.Locator {
+				loc := mocks.NewLocator(t)
+				modRoot := filepath.Join(args.pkgDir, "modroot")
+				loc.On("FindRootDir", "go.mod", 1).Return(modRoot, nil).Once()
+				loc.On("ReadModulePath", modRoot).
+					Return("", errors.New("read module path")).Once()
+				return loc
+			},
+			assert: func(t *testing.T, _ string, gen *mocks.CodeGenerator, _ []byte, err error) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "read module path")
 				gen.AssertNumberOfCalls(t, "GenerateTests", 0)
@@ -326,45 +259,33 @@ func TestApp_Run(t *testing.T) {
 			name: "locator RelativePackagePath error surfaces",
 			args: args{
 				enumName: "Role",
-				pkgDir:   mkTmp(t),
+				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
 				goPkg:    "enums",
 			},
-			setup: func(t *testing.T, args args) (*mocks.CodeGenerator, *mocks.Parser, *mocks.Locator, []byte) {
+			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
-				par := mocks.NewParser(t)
-				loc := mocks.NewLocator(t)
-
-				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
-					Return("foo", []string{"X"}, nil).
-					Once()
 				gen.On("GenerateCode", "foo", "Role", mock.Anything).
-					Return([]byte("code")).
-					Once()
-
-				modRoot := filepath.Join(args.pkgDir, "modroot")
-				loc.On("FindRootDir", "go.mod", 1).
-					Return(modRoot, nil).
-					Once()
-				loc.On("ReadModulePath", modRoot).
-					Return("github.com/example/mod", nil).
-					Once()
-				loc.On("RelativePackagePath", modRoot, args.pkgDir).
-					Return("", errors.New("determine relative dir")).
-					Once()
-
-				return gen, par, loc, nil
+					Return([]byte("code"), nil).Once()
+				return gen
 			},
-			assert: func(
-				t *testing.T,
-				_ string,
-				gen *mocks.CodeGenerator,
-				_ *mocks.Parser,
-				_ *mocks.Locator,
-				_ []byte,
-				err error,
-			) {
+			parMock: func(t *testing.T, args args) *mocks.Parser {
+				par := mocks.NewParser(t)
+				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
+					Return("foo", []string{"X"}, nil).Once()
+				return par
+			},
+			locMock: func(t *testing.T, args args) *mocks.Locator {
+				loc := mocks.NewLocator(t)
+				modRoot := filepath.Join(args.pkgDir, "modroot")
+				loc.On("FindRootDir", "go.mod", 1).Return(modRoot, nil).Once()
+				loc.On("ReadModulePath", modRoot).Return("github.com/example/mod", nil).Once()
+				loc.On("RelativePackagePath", modRoot, args.pkgDir).
+					Return("", errors.New("determine relative dir")).Once()
+				return loc
+			},
+			assert: func(t *testing.T, _ string, gen *mocks.CodeGenerator, _ []byte, err error) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "determine relative dir")
 				gen.AssertNumberOfCalls(t, "GenerateTests", 0)
@@ -372,14 +293,17 @@ func TestApp_Run(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for i := range testCases {
+		tc := testCases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			gen, par, loc, codeOut := tc.setup(t, tc.args)
+			gen := tc.genMock(t, tc.args, tc.codeOut)
+			par := tc.parMock(t, tc.args)
+			loc := tc.locMock(t, tc.args)
 
 			a := apppkg.New(gen, loc, par)
 			err := a.Run(tc.args.enumName, tc.args.pkgDir, tc.args.goFile, tc.args.goLine, tc.args.goPkg)
-			tc.assert(t, tc.args.pkgDir, gen, par, loc, codeOut, err)
+			tc.assert(t, tc.args.pkgDir, gen, tc.codeOut, err)
 		})
 	}
 }

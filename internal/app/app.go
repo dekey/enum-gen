@@ -32,7 +32,10 @@ func (a *App) Run(name, pkgDir, goFile, goLine, gopackage string) error {
 		return fmt.Errorf("no constants found to generate from")
 	}
 
-	out := a.generator.GenerateCode(pkg, name, consts)
+	out, err := a.generator.GenerateCode(pkg, name, consts)
+	if err != nil {
+		return fmt.Errorf("generate code: %w", err)
+	}
 
 	outFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen.go", strings.ToLower(name)))
 	slog.Debug("Writing output", slog.String("outFile", outFile))

@@ -61,19 +61,6 @@ func (e RoleType) IsValid() bool
 func (e RoleType) String() string
 ```
 
-### Usage in Code
-
-```go
-role, err := enums.RoleTypes.FromString("admin")
-if err != nil {
-    // handle error
-}
-
-if role == enums.RoleTypes.Admin() {
-    fmt.Println("User is an admin")
-}
-```
-
 ## Development
 
 The project includes a `Makefile` for common tasks:

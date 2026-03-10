@@ -1,10 +1,12 @@
 package parser
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"log/slog"
+	"path/filepath"
 	"strconv"
 )
 
@@ -17,7 +19,7 @@ func NewParseFromFile() *ParseFromFile {
 func (p *ParseFromFile) ParseFromFile(packageDir string, goFile string, goLine string) (string, []string, error) {
 	var consts []string
 
-	fullPath := packageDir + "/" + goFile
+	fullPath := filepath.Join(packageDir, goFile)
 
 	slog.Debug(
 		"Parsing file",
@@ -30,6 +32,9 @@ func (p *ParseFromFile) ParseFromFile(packageDir string, goFile string, goLine s
 	line, err := strconv.Atoi(goLine)
 	if err != nil {
 		return "", nil, err
+	}
+	if line <= 0 {
+		return "", nil, fmt.Errorf("goLine must be a positive integer, got %d", line)
 	}
 
 	// parse the Go file

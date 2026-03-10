@@ -10,7 +10,7 @@ type CodeGenerator struct {
 }
 
 // GenerateCode provides a mock function with given fields: pkg, name, consts
-func (_m *CodeGenerator) GenerateCode(pkg string, name string, consts []string) []byte {
+func (_m *CodeGenerator) GenerateCode(pkg string, name string, consts []string) ([]byte, error) {
 	ret := _m.Called(pkg, name, consts)
 
 	if len(ret) == 0 {
@@ -18,6 +18,10 @@ func (_m *CodeGenerator) GenerateCode(pkg string, name string, consts []string) 
 	}
 
 	var r0 []byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, []string) ([]byte, error)); ok {
+		return rf(pkg, name, consts)
+	}
 	if rf, ok := ret.Get(0).(func(string, string, []string) []byte); ok {
 		r0 = rf(pkg, name, consts)
 	} else {
@@ -26,7 +30,13 @@ func (_m *CodeGenerator) GenerateCode(pkg string, name string, consts []string) 
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, string, []string) error); ok {
+		r1 = rf(pkg, name, consts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GenerateTests provides a mock function with given fields: pkg, pkgDir, importPath, name, consts

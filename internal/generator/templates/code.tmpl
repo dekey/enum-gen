@@ -17,10 +17,12 @@ var {{.ProperStructVar}} {{.LowerStruct}}
 var ErrInvalid{{.ProperName}} = errors.New("invalid enum")
 
 func (e {{.UpperType}}) IsValid() bool {
+{{- if .Consts}}
 	switch e {
 	case {{range $i, $c := .Consts}}{{if $i}}, {{end}}{{$c}}{{end}}:
 		return true
 	}
+{{- end}}
 	return false
 }
 
