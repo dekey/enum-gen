@@ -1,14 +1,4 @@
-.PHONY: help up down format lint gen-rpc format-lint load-debug-env load-dev-env
-
-## this variable exposes environment variables into sub processes. So they will be available inside sub commands.
-.EXPORT_ALL_VARIABLES:
-
-define setup_env
-	$(eval ENV_FILE := $(1).env)
-	@echo " - setup env $(ENV_FILE)"
-	$(eval include $(1).env)
-	$(eval export sed 's/=.*//' $(1).env)
-endef
+.PHONY: help format lint format-lint
 
 all:
 	@make help

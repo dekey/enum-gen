@@ -41,6 +41,18 @@ func main() {
 		os.Exit(2)
 	}
 
+	if gopackage == "" {
+		slog.Error(
+			"error during code generation",
+			slog.String("message", "GOPACKAGE is not set; run via `go generate`"),
+		)
+		os.Exit(2)
+	}
+	if goLine == "" {
+		slog.Error("error during code generation", slog.String("message", "GOLINE is not set; run via `go generate`"))
+		os.Exit(2)
+	}
+
 	//nolint:gosec // in CLI context, we want to log the parameters for transparency
 	slog.Debug(
 		"Generating enum code",
