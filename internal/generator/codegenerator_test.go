@@ -205,6 +205,20 @@ func TestGenerateTests_Table(t *testing.T) {
 			},
 		},
 		{
+			name:       "exports UpperType in tests when input type is lowercase",
+			pkg:        "testpkg",
+			pkgDir:     t.TempDir(),
+			importPath: "github.com/dekey/enums/internal/testpkg",
+			typ:        "example",
+			consts:     []string{"A"},
+			assert: func(t *testing.T, pkgDir, typ string, err error) {
+				require.NoError(t, err)
+				enum := string(getEnumFileBytes(t, pkgDir, typ))
+				// enums.ExampleType("eggs")
+				require.Contains(t, enum, "enums.ExampleType(\"eggs\")")
+			},
+		},
+		{
 			name:       "write error when directory does not exist",
 			pkg:        "foo",
 			pkgDir:     filepath.Join(t.TempDir(), "does-not-exist"),
