@@ -12,6 +12,8 @@ import (
 	"unicode"
 )
 
+const defaultEnumsPkgName = "enums"
+
 //go:embed templates/code.tmpl
 var codeTemplate string
 
@@ -25,6 +27,7 @@ type CodeGenerator struct {
 	codeTemplate           string
 	testTemplate           string
 	baseTestHelperTemplate string
+	EnumsPkgName           string
 }
 
 func NewCodeGenerator() *CodeGenerator {
@@ -32,6 +35,7 @@ func NewCodeGenerator() *CodeGenerator {
 		codeTemplate:           codeTemplate,
 		testTemplate:           testTemplate,
 		baseTestHelperTemplate: baseTestHelperTemplate,
+		EnumsPkgName:           defaultEnumsPkgName,
 	}
 }
 
@@ -96,7 +100,7 @@ func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, con
 			continue
 		}
 		fmt.Fprintf(
-			&casesBuilder, "\t\t%s.%s.%s(): true,\n", "enums",
+			&casesBuilder, "\t\t%s.%s.%s(): true,\n", cg.EnumsPkgName,
 			properStructVar,
 			cg.exportName(c),
 		)
@@ -107,7 +111,7 @@ func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, con
 		"Pkg":             pkg,
 		"ImportPath":      importPath,
 		"ProperName":      properName,
-		"EnumsPkgName":    "enums",
+		"EnumsPkgName":    cg.EnumsPkgName,
 		"UpperType":       upperType,
 		"ProperStructVar": properStructVar,
 		"Cases":           casesBuilder.String(),
@@ -132,7 +136,7 @@ func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, con
 	baseData := map[string]any{
 		"Pkg":          pkg,
 		"ImportPath":   importPath,
-		"EnumsPkgName": "enums",
+		"EnumsPkgName": cg.EnumsPkgName,
 	}
 	baseTmpl, err := template.New("base").Parse(baseTestHelperTemplate)
 	if err != nil {

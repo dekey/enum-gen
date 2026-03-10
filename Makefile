@@ -40,4 +40,4 @@ coverage: ## show coverage
 	go tool cover -html=cover.out
 
 build:
-	PATH=$(PWD)/build:$$PATH go build -o ~/go/bin/enumgen  -ldflags="-X 'main.version=v0.0.1'" ./cmd/enumgen/main.go
+	PATH=$(PWD)/build:$$PATH go build -o ~/go/bin/enumgen  -ldflags="-X 'main.version=v0.0.2'" ./cmd/enumgen/main.go

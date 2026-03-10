@@ -5,7 +5,7 @@ package {{.Pkg}}_test
 import (
 	"testing"
 
-	"{{.ImportPath}}"
+	{{.EnumsPkgName}} "{{.ImportPath}}"
 )
 
 func Test{{.ProperName}}_Validate(t *testing.T) {

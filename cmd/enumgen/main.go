@@ -13,8 +13,10 @@ import (
 
 func main() {
 	var name string
+	var enumsPkgName string
 	var debug bool
 	flag.StringVar(&name, "name", "", "This variable is responsible for naming files and structures")
+	flag.StringVar(&enumsPkgName, "enums-pkg-name", "enums", "The package name/alias for enums in tests")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 	flag.Parse()
 
@@ -65,6 +67,7 @@ func main() {
 
 	p := parser.NewParseFromFile()
 	g := generator.NewCodeGenerator()
+	g.EnumsPkgName = enumsPkgName
 	locator := filesystem.NewLocator()
 
 	consoleApp := app.New(g, locator, p)
