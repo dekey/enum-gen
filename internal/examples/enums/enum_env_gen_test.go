@@ -5,21 +5,21 @@ package enums_test
 import (
 	"testing"
 
-	"github.com/dekey/enums/internal/examples/enums"
+	enums "github.com/dekey/enums/internal/examples/enums"
 )
 
 func TestEnv_Validate(t *testing.T) {
 	t.Parallel()
 	doEnumTest(t, map[stringEnum]bool{
-		enums.EnvType("eggs"):    false,
-		enums.EnvTypes.Prod():    true,
-		enums.EnvTypes.Gcpdev():  true,
+		enums.EnvType("eggs"): false,
+		enums.EnvTypes.Prod(): true,
+		enums.EnvTypes.Gcpdev(): true,
 		enums.EnvTypes.Staging(): true,
-		enums.EnvTypes.Demo():    true,
-		enums.EnvTypes.Test():    true,
-		enums.EnvTypes.Dev():     true,
-		enums.EnvTypes.Lint():    true,
-		enums.EnvTypes.Debug():   true,
-		enums.EnvTypes.Ci():      true,
+		enums.EnvTypes.Demo(): true,
+		enums.EnvTypes.Test(): true,
+		enums.EnvTypes.Dev(): true,
+		enums.EnvTypes.Lint(): true,
+		enums.EnvTypes.Debug(): true,
+		enums.EnvTypes.Ci(): true,
 	})
 }

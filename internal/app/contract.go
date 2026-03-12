@@ -13,7 +13,7 @@ type Parser interface {
 
 //go:generate mockery --name Locator --filename locator.go --structname Locator --output internal/mocks
 type Locator interface {
-	FindRootDir(file string, skipCaller int) (string, error)
+	FindRootDirFrom(startDir string, file string) (string, error)
 	ReadModulePath(root string) (string, error)
 	RelativePackagePath(modRoot string, fullPath string) (string, error)
 }
