@@ -3,7 +3,7 @@ module github.com/dekey/enums
 go 1.26
 
 require (
-	github.com/dekey/go-pkg v0.0.1
+	github.com/dekey/go-pkg v0.0.7
 	github.com/stretchr/testify v1.11.1
 )
 

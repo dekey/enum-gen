@@ -1,4 +1,4 @@
-.PHONY: help format lint format-lint build
+.PHONY: help format lint format-lint build init add-vendor
 
 all:
 	@make help
