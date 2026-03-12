@@ -61,7 +61,7 @@ func TestApp_Run(t *testing.T) {
 			locMock: func(t *testing.T, args args) *mocks.Locator {
 				loc := mocks.NewLocator(t)
 				modRoot := filepath.Join(args.pkgDir, "modroot")
-				loc.On("FindRootDir", "go.mod", 1).Return(modRoot, nil).Once()
+				loc.On("FindRootDirFrom", args.pkgDir, "go.mod").Return(modRoot, nil).Once()
 				loc.On("ReadModulePath", modRoot).Return("github.com/example/mod", nil).Once()
 				loc.On("RelativePackagePath", modRoot, args.pkgDir).Return("internal/foo", nil).Once()
 				return loc
@@ -206,9 +206,9 @@ func TestApp_Run(t *testing.T) {
 					Return("foo", []string{"EnvProd"}, nil).Once()
 				return par
 			},
-			locMock: func(t *testing.T, _ args) *mocks.Locator {
+			locMock: func(t *testing.T, args args) *mocks.Locator {
 				loc := mocks.NewLocator(t)
-				loc.On("FindRootDir", "go.mod", 1).
+				loc.On("FindRootDirFrom", args.pkgDir, "go.mod").
 					Return("", errors.New("determine module root")).Once()
 				return loc
 			},
@@ -244,7 +244,7 @@ func TestApp_Run(t *testing.T) {
 			locMock: func(t *testing.T, args args) *mocks.Locator {
 				loc := mocks.NewLocator(t)
 				modRoot := filepath.Join(args.pkgDir, "modroot")
-				loc.On("FindRootDir", "go.mod", 1).Return(modRoot, nil).Once()
+				loc.On("FindRootDirFrom", args.pkgDir, "go.mod").Return(modRoot, nil).Once()
 				loc.On("ReadModulePath", modRoot).
 					Return("", errors.New("read module path")).Once()
 				return loc
@@ -279,7 +279,7 @@ func TestApp_Run(t *testing.T) {
 			locMock: func(t *testing.T, args args) *mocks.Locator {
 				loc := mocks.NewLocator(t)
 				modRoot := filepath.Join(args.pkgDir, "modroot")
-				loc.On("FindRootDir", "go.mod", 1).Return(modRoot, nil).Once()
+				loc.On("FindRootDirFrom", args.pkgDir, "go.mod").Return(modRoot, nil).Once()
 				loc.On("ReadModulePath", modRoot).Return("github.com/example/mod", nil).Once()
 				loc.On("RelativePackagePath", modRoot, args.pkgDir).
 					Return("", errors.New("determine relative dir")).Once()

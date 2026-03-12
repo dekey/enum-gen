@@ -9,27 +9,27 @@ type Locator struct {
 	mock.Mock
 }
 
-// FindRootDir provides a mock function with given fields: file, skipCaller
-func (_m *Locator) FindRootDir(file string, skipCaller int) (string, error) {
-	ret := _m.Called(file, skipCaller)
+// FindRootDirFrom provides a mock function with given fields: startDir, file
+func (_m *Locator) FindRootDirFrom(startDir string, file string) (string, error) {
+	ret := _m.Called(startDir, file)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindRootDir")
+		panic("no return value specified for FindRootDirFrom")
 	}
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, int) (string, error)); ok {
-		return rf(file, skipCaller)
+	if rf, ok := ret.Get(0).(func(string, string) (string, error)); ok {
+		return rf(startDir, file)
 	}
-	if rf, ok := ret.Get(0).(func(string, int) string); ok {
-		r0 = rf(file, skipCaller)
+	if rf, ok := ret.Get(0).(func(string, string) string); ok {
+		r0 = rf(startDir, file)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, int) error); ok {
-		r1 = rf(file, skipCaller)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(startDir, file)
 	} else {
 		r1 = ret.Error(1)
 	}

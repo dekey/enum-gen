@@ -44,7 +44,7 @@ func (a *App) Run(name, pkgDir, goFile, goLine, gopackage string) error {
 		return fmt.Errorf("write output: %w", err)
 	}
 
-	modRoot, err := a.locator.FindRootDir("go.mod", 1)
+	modRoot, err := a.locator.FindRootDirFrom(pkgDir, "go.mod")
 	if err != nil {
 		return fmt.Errorf("determine module root: %w", err)
 	}
