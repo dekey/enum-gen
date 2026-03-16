@@ -11,14 +11,23 @@ import (
 	"github.com/dekey/go-pkg/filesystem"
 )
 
+var version = "dev"
+
 func main() {
 	var name string
 	var enumsPkgName string
 	var debug bool
+	var showVersion bool
 	flag.StringVar(&name, "name", "", "This variable is responsible for naming files and structures")
 	flag.StringVar(&enumsPkgName, "enums-pkg-name", "enums", "The package name/alias for enums in tests")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
+	flag.BoolVar(&showVersion, "version", false, "Show version and exit")
 	flag.Parse()
+
+	if showVersion {
+		os.Stdout.WriteString(version + "\n")
+		os.Exit(0)
+	}
 
 	if debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
@@ -55,7 +64,6 @@ func main() {
 		os.Exit(2)
 	}
 
-	//nolint:gosec // in CLI context, we want to log the parameters for transparency
 	slog.Debug(
 		"Generating enum code",
 		slog.String("name", name),
@@ -66,13 +74,16 @@ func main() {
 	)
 
 	p := parser.NewParseFromFile()
-	g := generator.NewCodeGenerator()
+	g, err := generator.NewCodeGenerator()
+	if err != nil {
+		slog.Error("error during code generation", slog.String("message", err.Error()))
+		os.Exit(2)
+	}
 	g.EnumsPkgName = enumsPkgName
 	locator := filesystem.NewLocator()
 
 	consoleApp := app.New(g, locator, p)
 	if err := consoleApp.Run(name, pkgDir, goFile, goLine, gopackage); err != nil {
-		//nolint:gosec // in CLI context, logging errors from the tool is expected
 		slog.Error(
 			"error during code generation",
 			slog.String("message", err.Error()),

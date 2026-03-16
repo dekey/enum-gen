@@ -16,6 +16,7 @@ init:
 format: ## Run Go formatter locally
 	golines --base-formatter="goimports" -w -m 120 .
 	gofumpt -w .
+	go fix ./...
 
 lint: ## Run Go linter locally (used in pre-commit hook)
 	golangci-lint -c ".golangci.yml" run --allow-parallel-runners ./...
@@ -39,5 +40,14 @@ test: ## Running test on local machine
 coverage: ## show coverage
 	go tool cover -html=cover.out
 
-build:
-	PATH=$(PWD)/build:$$PATH go build -o ~/go/bin/enumgen  -ldflags="-X 'main.version=v0.0.2'" ./cmd/enumgen/main.go
+# Fetch the latest tag from git and increment it only when building
+build: ## Build and install enumgen with dynamic versioning
+	@LATEST_TAG=$$(git tag --list --sort=-v:refname | head -n 1); \
+	if [ -z "$$LATEST_TAG" ]; then \
+		echo "Error: No git tag found. Please create a tag (e.g., v0.0.1) before building."; \
+		exit 1; \
+	fi; \
+	NEW_VERSION=$$(echo $$LATEST_TAG | awk -F. '{$$NF = $$NF + 1; print $$0}' OFS=.); \
+	echo "Current version: $$LATEST_TAG"; \
+	echo "New version:     $$NEW_VERSION"; \
+	PATH=$(PWD)/build:$$PATH go build -o ~/go/bin/enumgen -ldflags="-X 'main.version=$$NEW_VERSION'" ./cmd/enumgen/main.go

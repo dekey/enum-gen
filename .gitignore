@@ -36,3 +36,5 @@ cmd/excluded
 .claude
 .serena
 CLAUDE.md
+.gemini
+.junie

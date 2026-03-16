@@ -31,7 +31,7 @@ func (p *ParseFromFile) ParseFromFile(packageDir string, goFile string, goLine s
 
 	line, err := strconv.Atoi(goLine)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("parse line number %q: %w", goLine, err)
 	}
 	if line <= 0 {
 		return "", nil, fmt.Errorf("goLine must be a positive integer, got %d", line)

@@ -80,7 +80,7 @@ const Y = 42
 			},
 		},
 		{
-			name: "non numeric goLine returns error",
+			name: "non numeric goLine returns contextual error",
 			content: `package foo
 const A = 1
 `,
@@ -88,6 +88,8 @@ const A = 1
 			goLine: "abc",
 			assert: func(t *testing.T, pkg string, consts []string, err error) {
 				require.Error(t, err)
+				require.Contains(t, err.Error(), "parse line number")
+				require.Contains(t, err.Error(), "abc")
 				require.Empty(t, pkg)
 				require.Empty(t, consts)
 			},
