@@ -64,7 +64,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	slog.Debug(
+	slog.Debug( //nolint:gosec // G706: values are structured slog fields, not interpolated into the log message
 		"Generating enum code",
 		slog.String("name", name),
 		slog.String("goFile", goFile),
@@ -84,7 +84,7 @@ func main() {
 
 	consoleApp := app.New(g, locator, p)
 	if err := consoleApp.Run(name, pkgDir, goFile, goLine, gopackage); err != nil {
-		slog.Error(
+		slog.Error( //nolint:gosec // G706: err.Error() is a structured slog field, not interpolated into the log message
 			"error during code generation",
 			slog.String("message", err.Error()),
 		)
