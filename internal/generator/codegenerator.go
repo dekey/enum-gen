@@ -32,23 +32,31 @@ type CodeGenerator struct {
 
 // NewCodeGenerator initializes and returns a new CodeGenerator with parsed templates
 func NewCodeGenerator() (*CodeGenerator, error) {
+	res, err := newCodeGeneratorWithTemplates(codeTemplate, testTemplate, baseTestHelperTemplate)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func newCodeGeneratorWithTemplates(codeTmpl, testTmpl, baseTmpl string) (*CodeGenerator, error) {
 	cg := &CodeGenerator{EnumsPkgName: defaultEnumsPkgName}
 
 	var err error
 	cg.codeTmpl, err = template.
 		New("code").
 		Funcs(template.FuncMap{"export": cg.exportName}).
-		Parse(codeTemplate)
+		Parse(codeTmpl)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrParseCodeTemplate, err)
 	}
 
-	cg.testTmpl, err = template.New("test").Parse(testTemplate)
+	cg.testTmpl, err = template.New("test").Parse(testTmpl)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrParseTestTemplate, err)
 	}
 
-	cg.baseTmpl, err = template.New("base").Parse(baseTestHelperTemplate)
+	cg.baseTmpl, err = template.New("base").Parse(baseTmpl)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrParseBaseTemplate, err)
 	}
