@@ -246,8 +246,7 @@ func TestGenerateTests_Table(t *testing.T) {
 			typ:        "Role",
 			consts:     []string{"A"},
 			assert: func(t *testing.T, _ string, _ string, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "write test file")
+				require.ErrorIs(t, err, generator.ErrWriteTestFile)
 			},
 		},
 	}

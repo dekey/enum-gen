@@ -15,6 +15,9 @@ import (
 func TestApp_Run(t *testing.T) {
 	t.Parallel()
 
+	parseErr := errors.New("parse fail")
+	genCodeErr := errors.New("generate code fail")
+
 	type args struct {
 		enumName string
 		pkgDir   string
@@ -96,8 +99,7 @@ func TestApp_Run(t *testing.T) {
 				return mocks.NewLocator(t)
 			},
 			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "no constants found")
+				require.ErrorIs(t, err, apppkg.ErrNoConstants)
 			},
 		},
 		{
@@ -115,15 +117,14 @@ func TestApp_Run(t *testing.T) {
 			parMock: func(t *testing.T, args args) *mocks.Parser {
 				par := mocks.NewParser(t)
 				par.On("ParseFromFile", args.pkgDir, args.goFile, args.goLine).
-					Return("", nil, errors.New("parse fail")).Once()
+					Return("", nil, parseErr).Once()
 				return par
 			},
 			locMock: func(t *testing.T, _ args) *mocks.Locator {
 				return mocks.NewLocator(t)
 			},
 			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "parse fail")
+				require.ErrorIs(t, err, parseErr)
 			},
 		},
 		{
@@ -151,8 +152,7 @@ func TestApp_Run(t *testing.T) {
 				return mocks.NewLocator(t)
 			},
 			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "write output")
+				require.ErrorIs(t, err, apppkg.ErrWriteOutput)
 			},
 		},
 		{
@@ -167,7 +167,7 @@ func TestApp_Run(t *testing.T) {
 			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
 				gen.On("GenerateCode", "foo", "Role", mock.Anything).
-					Return([]byte(nil), errors.New("generate code fail")).Once()
+					Return([]byte(nil), genCodeErr).Once()
 				return gen
 			},
 			parMock: func(t *testing.T, args args) *mocks.Parser {
@@ -180,8 +180,7 @@ func TestApp_Run(t *testing.T) {
 				return mocks.NewLocator(t)
 			},
 			assert: func(t *testing.T, _ string, _ *mocks.CodeGenerator, _ []byte, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "generate code fail")
+				require.ErrorIs(t, err, genCodeErr)
 			},
 		},
 		{
@@ -209,12 +208,11 @@ func TestApp_Run(t *testing.T) {
 			locMock: func(t *testing.T, args args) *mocks.Locator {
 				loc := mocks.NewLocator(t)
 				loc.On("FindRootDirFrom", args.pkgDir, "go.mod").
-					Return("", errors.New("determine module root")).Once()
+					Return("", errors.New("mock: root dir not found")).Once()
 				return loc
 			},
 			assert: func(t *testing.T, tmp string, gen *mocks.CodeGenerator, _ []byte, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "determine module root")
+				require.ErrorIs(t, err, apppkg.ErrDetermineModuleRoot)
 				_, statErr := os.Stat(filepath.Join(tmp, "enum_env_gen.go"))
 				require.NoError(t, statErr)
 				gen.AssertNumberOfCalls(t, "GenerateTests", 0)
@@ -246,12 +244,11 @@ func TestApp_Run(t *testing.T) {
 				modRoot := filepath.Join(args.pkgDir, "modroot")
 				loc.On("FindRootDirFrom", args.pkgDir, "go.mod").Return(modRoot, nil).Once()
 				loc.On("ReadModulePath", modRoot).
-					Return("", errors.New("read module path")).Once()
+					Return("", errors.New("mock: module path unreadable")).Once()
 				return loc
 			},
 			assert: func(t *testing.T, _ string, gen *mocks.CodeGenerator, _ []byte, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "read module path")
+				require.ErrorIs(t, err, apppkg.ErrReadModulePath)
 				gen.AssertNumberOfCalls(t, "GenerateTests", 0)
 			},
 		},
@@ -282,12 +279,11 @@ func TestApp_Run(t *testing.T) {
 				loc.On("FindRootDirFrom", args.pkgDir, "go.mod").Return(modRoot, nil).Once()
 				loc.On("ReadModulePath", modRoot).Return("github.com/example/mod", nil).Once()
 				loc.On("RelativePackagePath", modRoot, args.pkgDir).
-					Return("", errors.New("determine relative dir")).Once()
+					Return("", errors.New("mock: relative path failed")).Once()
 				return loc
 			},
 			assert: func(t *testing.T, _ string, gen *mocks.CodeGenerator, _ []byte, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "determine relative dir")
+				require.ErrorIs(t, err, apppkg.ErrDetermineRelativeDir)
 				gen.AssertNumberOfCalls(t, "GenerateTests", 0)
 			},
 		},

@@ -40,17 +40,17 @@ func NewCodeGenerator() (*CodeGenerator, error) {
 		Funcs(template.FuncMap{"export": cg.exportName}).
 		Parse(codeTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("parse code template: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrParseCodeTemplate, err)
 	}
 
 	cg.testTmpl, err = template.New("test").Parse(testTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("parse test template: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrParseTestTemplate, err)
 	}
 
 	cg.baseTmpl, err = template.New("base").Parse(baseTestHelperTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("parse base template: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrParseBaseTemplate, err)
 	}
 	return cg, nil
 }
@@ -134,7 +134,7 @@ func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, con
 	// Write enum specific test
 	testFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen_test.go", strings.ToLower(name)))
 	if err := os.WriteFile(testFile, testBuf.Bytes(), 0o600); err != nil {
-		return fmt.Errorf("write test file: %w", err)
+		return fmt.Errorf("%w: %w", ErrWriteTestFile, err)
 	}
 
 	// Always (re)write base_test.go to ensure it's up-to-date

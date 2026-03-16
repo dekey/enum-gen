@@ -1,5 +1,15 @@
 package app
 
+import "errors"
+
+var (
+	ErrNoConstants          = errors.New("no constants found to generate from")
+	ErrWriteOutput          = errors.New("write output")
+	ErrDetermineModuleRoot  = errors.New("determine module root")
+	ErrReadModulePath       = errors.New("read module path")
+	ErrDetermineRelativeDir = errors.New("determine relative dir")
+)
+
 //go:generate mockery --name CodeGenerator --filename codegenerator.go --structname CodeGenerator --output internal/mocks
 type CodeGenerator interface {
 	GenerateCode(pkg, name string, consts []string) ([]byte, error)

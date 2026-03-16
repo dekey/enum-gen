@@ -29,7 +29,7 @@ func (a *App) Run(name, pkgDir, goFile, goLine, gopackage string) error {
 		return err
 	}
 	if len(consts) == 0 {
-		return fmt.Errorf("no constants found to generate from")
+		return fmt.Errorf("%w", ErrNoConstants)
 	}
 
 	out, err := a.generator.GenerateCode(pkg, name, consts)
@@ -41,21 +41,21 @@ func (a *App) Run(name, pkgDir, goFile, goLine, gopackage string) error {
 	slog.Debug("Writing output", slog.String("outFile", outFile))
 
 	if err := os.WriteFile(outFile, out, 0o600); err != nil {
-		return fmt.Errorf("write output: %w", err)
+		return fmt.Errorf("%w: %w", ErrWriteOutput, err)
 	}
 
 	modRoot, err := a.locator.FindRootDirFrom(pkgDir, "go.mod")
 	if err != nil {
-		return fmt.Errorf("determine module root: %w", err)
+		return fmt.Errorf("%w: %w", ErrDetermineModuleRoot, err)
 	}
 	modulePath, err := a.locator.ReadModulePath(modRoot)
 	if err != nil {
-		return fmt.Errorf("read module path: %w", err)
+		return fmt.Errorf("%w: %w", ErrReadModulePath, err)
 	}
 
 	rel, err := a.locator.RelativePackagePath(modRoot, pkgDir)
 	if err != nil {
-		return fmt.Errorf("determine relative dir: %w", err)
+		return fmt.Errorf("%w: %w", ErrDetermineRelativeDir, err)
 	}
 
 	rel = filepath.ToSlash(rel)
