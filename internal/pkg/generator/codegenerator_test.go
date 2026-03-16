@@ -9,7 +9,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/dekey/enums/internal/generator"
+	"github.com/dekey/enums/internal/pkg/generator"
 	"github.com/stretchr/testify/require"
 )
 

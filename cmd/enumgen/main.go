@@ -4,30 +4,22 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/dekey/enums/internal/app"
-	"github.com/dekey/enums/internal/generator"
-	"github.com/dekey/enums/internal/parser"
+	"github.com/dekey/enums/internal/pkg/generator"
+	"github.com/dekey/enums/internal/pkg/parser"
 	"github.com/dekey/go-pkg/filesystem"
 )
-
-var version = "dev"
 
 func main() {
 	var name string
 	var enumsPkgName string
 	var debug bool
-	var showVersion bool
 	flag.StringVar(&name, "name", "", "This variable is responsible for naming files and structures")
 	flag.StringVar(&enumsPkgName, "enums-pkg-name", "enums", "The package name/alias for enums in tests")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
-	flag.BoolVar(&showVersion, "version", false, "Show version and exit")
 	flag.Parse()
-
-	if showVersion {
-		os.Stdout.WriteString(version + "\n")
-		os.Exit(0)
-	}
 
 	if debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
@@ -64,15 +56,6 @@ func main() {
 		os.Exit(2)
 	}
 
-	slog.Debug( //nolint:gosec // G706: values are structured slog fields, not interpolated into the log message
-		"Generating enum code",
-		slog.String("name", name),
-		slog.String("goFile", goFile),
-		slog.String("pkgDir", pkgDir),
-		slog.String("goLine", goLine),
-		slog.String("gopackage", gopackage),
-	)
-
 	p := parser.NewParseFromFile()
 	g, err := generator.NewCodeGenerator()
 	if err != nil {
@@ -84,9 +67,12 @@ func main() {
 
 	consoleApp := app.New(g, locator, p)
 	if err := consoleApp.Run(name, pkgDir, goFile, goLine, gopackage); err != nil {
-		slog.Error( //nolint:gosec // G706: err.Error() is a structured slog field, not interpolated into the log message
+		msg := strings.ReplaceAll(err.Error(), "\n", "")
+		msg = strings.ReplaceAll(msg, "\r", "")
+
+		slog.Error(
 			"error during code generation",
-			slog.String("message", err.Error()),
+			slog.String("message", msg),
 		)
 		os.Exit(2)
 	}
