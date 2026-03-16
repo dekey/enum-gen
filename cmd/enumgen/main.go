@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/dekey/enums/internal/app"
-	"github.com/dekey/enums/internal/pkg/generator"
-	"github.com/dekey/enums/internal/pkg/parser"
+	"github.com/dekey/enums/internal/generator"
+	"github.com/dekey/enums/internal/parser"
 	"github.com/dekey/go-pkg/filesystem"
 )
 

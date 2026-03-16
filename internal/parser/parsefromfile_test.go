@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dekey/enums/internal/pkg/parser"
+	"github.com/dekey/enums/internal/parser"
 	"github.com/stretchr/testify/require"
 )
 
