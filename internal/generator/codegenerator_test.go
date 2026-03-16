@@ -118,11 +118,11 @@ func TestGenerateCode_Table(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cg := generator.NewCodeGenerator()
+			cg, err := generator.NewCodeGenerator()
+			require.NoError(t, err)
 			got, err := cg.GenerateCode(tc.pkg, tc.typ, tc.consts)
 			tc.assert(t, got, err)
 		})
@@ -219,6 +219,26 @@ func TestGenerateTests_Table(t *testing.T) {
 			},
 		},
 		{
+			name:       "generated files have 0o600 permissions",
+			pkg:        "perms",
+			pkgDir:     t.TempDir(),
+			importPath: "github.com/dekey/enums/internal/perms",
+			typ:        "Status",
+			consts:     []string{"Active", "Inactive"},
+			assert: func(t *testing.T, pkgDir, typ string, err error) {
+				require.NoError(t, err)
+
+				enumFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen_test.go", strings.ToLower(typ)))
+				info, statErr := os.Stat(enumFile)
+				require.NoError(t, statErr)
+				require.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "enum test file must be 0o600")
+
+				baseInfo, statErr := os.Stat(filepath.Join(pkgDir, "base_test.go"))
+				require.NoError(t, statErr)
+				require.Equal(t, os.FileMode(0o600), baseInfo.Mode().Perm(), "base_test.go must be 0o600")
+			},
+		},
+		{
 			name:       "write error when directory does not exist",
 			pkg:        "foo",
 			pkgDir:     filepath.Join(t.TempDir(), "does-not-exist"),
@@ -226,21 +246,50 @@ func TestGenerateTests_Table(t *testing.T) {
 			typ:        "Role",
 			consts:     []string{"A"},
 			assert: func(t *testing.T, _ string, _ string, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "write test file")
+				require.ErrorIs(t, err, generator.ErrWriteTestFile)
 			},
 		},
 	}
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cg := generator.NewCodeGenerator()
-			err := cg.GenerateTests(tc.pkg, tc.pkgDir, tc.importPath, tc.typ, tc.consts)
+			cg, err := generator.NewCodeGenerator()
+			require.NoError(t, err)
+			err = cg.GenerateTests(tc.pkg, tc.pkgDir, tc.importPath, tc.typ, tc.consts)
 			tc.assert(t, tc.pkgDir, tc.typ, err)
 		})
 	}
+}
+
+func TestNewCodeGenerator_ReturnsNoError(t *testing.T) {
+	t.Parallel()
+	cg, err := generator.NewCodeGenerator()
+	require.NoError(t, err)
+	require.NotNil(t, cg)
+}
+
+func TestGenerateTests_OverwritesBaseTestOnSecondCall(t *testing.T) {
+	t.Parallel()
+
+	pkgDir := t.TempDir()
+	cg, err := generator.NewCodeGenerator()
+	require.NoError(t, err)
+
+	// First call — writes base_test.go with pkg "first"
+	err = cg.GenerateTests("first", pkgDir, "github.com/dekey/enums/internal/first", "Role", []string{"A"})
+	require.NoError(t, err)
+
+	firstContent := readFile(t, filepath.Join(pkgDir, "base_test.go"))
+	require.Contains(t, firstContent, "package first")
+
+	// Second call — overwrites base_test.go with pkg "second"
+	err = cg.GenerateTests("second", pkgDir, "github.com/dekey/enums/internal/second", "Env", []string{"B"})
+	require.NoError(t, err)
+
+	secondContent := readFile(t, filepath.Join(pkgDir, "base_test.go"))
+	require.Contains(t, secondContent, "package second")
+	require.NotContains(t, secondContent, "package first")
 }
 
 func getEnumFileBytes(t *testing.T, pkgDir string, typ string) []byte {

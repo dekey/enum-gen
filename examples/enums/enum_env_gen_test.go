@@ -5,7 +5,7 @@ package enums_test
 import (
 	"testing"
 
-	enums "github.com/dekey/enums/internal/examples/enums"
+	enums "github.com/dekey/enums/examples/enums"
 )
 
 func TestEnv_Validate(t *testing.T) {

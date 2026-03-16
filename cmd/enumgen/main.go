@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/dekey/enums/internal/app"
 	"github.com/dekey/enums/internal/generator"
@@ -55,27 +56,23 @@ func main() {
 		os.Exit(2)
 	}
 
-	//nolint:gosec // in CLI context, we want to log the parameters for transparency
-	slog.Debug(
-		"Generating enum code",
-		slog.String("name", name),
-		slog.String("goFile", goFile),
-		slog.String("pkgDir", pkgDir),
-		slog.String("goLine", goLine),
-		slog.String("gopackage", gopackage),
-	)
-
 	p := parser.NewParseFromFile()
-	g := generator.NewCodeGenerator()
+	g, err := generator.NewCodeGenerator()
+	if err != nil {
+		slog.Error("error during code generation", slog.String("message", err.Error()))
+		os.Exit(2)
+	}
 	g.EnumsPkgName = enumsPkgName
 	locator := filesystem.NewLocator()
 
 	consoleApp := app.New(g, locator, p)
 	if err := consoleApp.Run(name, pkgDir, goFile, goLine, gopackage); err != nil {
-		//nolint:gosec // in CLI context, logging errors from the tool is expected
+		msg := strings.ReplaceAll(err.Error(), "\n", "")
+		msg = strings.ReplaceAll(msg, "\r", "")
+
 		slog.Error(
 			"error during code generation",
-			slog.String("message", err.Error()),
+			slog.String("message", msg),
 		)
 		os.Exit(2)
 	}

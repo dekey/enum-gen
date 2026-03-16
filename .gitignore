@@ -36,3 +36,6 @@ cmd/excluded
 .claude
 .serena
 CLAUDE.md
+.gemini
+.junie
+.code-intelegent

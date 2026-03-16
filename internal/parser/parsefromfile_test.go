@@ -80,14 +80,14 @@ const Y = 42
 			},
 		},
 		{
-			name: "non numeric goLine returns error",
+			name: "non numeric goLine returns contextual error",
 			content: `package foo
 const A = 1
 `,
 			goFile: "e.go",
 			goLine: "abc",
 			assert: func(t *testing.T, pkg string, consts []string, err error) {
-				require.Error(t, err)
+				require.ErrorIs(t, err, parser.ErrParseLineNumber)
 				require.Empty(t, pkg)
 				require.Empty(t, consts)
 			},
@@ -100,8 +100,7 @@ const A = 1
 			goFile: "f.go",
 			goLine: "0",
 			assert: func(t *testing.T, pkg string, consts []string, err error) {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "goLine must be a positive integer")
+				require.ErrorIs(t, err, parser.ErrInvalidGoLine)
 				require.Empty(t, pkg)
 				require.Empty(t, consts)
 			},

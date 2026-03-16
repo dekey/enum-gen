@@ -24,19 +24,43 @@ var testTemplate string
 var baseTestHelperTemplate string
 
 type CodeGenerator struct {
-	codeTemplate           string
-	testTemplate           string
-	baseTestHelperTemplate string
-	EnumsPkgName           string
+	codeTmpl     *template.Template
+	testTmpl     *template.Template
+	baseTmpl     *template.Template
+	EnumsPkgName string
 }
 
-func NewCodeGenerator() *CodeGenerator {
-	return &CodeGenerator{
-		codeTemplate:           codeTemplate,
-		testTemplate:           testTemplate,
-		baseTestHelperTemplate: baseTestHelperTemplate,
-		EnumsPkgName:           defaultEnumsPkgName,
+// NewCodeGenerator initializes and returns a new CodeGenerator with parsed templates
+func NewCodeGenerator() (*CodeGenerator, error) {
+	res, err := newCodeGeneratorWithTemplates(codeTemplate, testTemplate, baseTestHelperTemplate)
+	if err != nil {
+		return nil, err
 	}
+	return res, nil
+}
+
+func newCodeGeneratorWithTemplates(codeTmpl, testTmpl, baseTmpl string) (*CodeGenerator, error) {
+	cg := &CodeGenerator{EnumsPkgName: defaultEnumsPkgName}
+
+	var err error
+	cg.codeTmpl, err = template.
+		New("code").
+		Funcs(template.FuncMap{"export": cg.exportName}).
+		Parse(codeTmpl)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrParseCodeTemplate, err)
+	}
+
+	cg.testTmpl, err = template.New("test").Parse(testTmpl)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrParseTestTemplate, err)
+	}
+
+	cg.baseTmpl, err = template.New("base").Parse(baseTmpl)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrParseBaseTemplate, err)
+	}
+	return cg, nil
 }
 
 // GenerateCode generates the enum code based on the provided package name, type name, and constants
@@ -68,15 +92,8 @@ func (cg *CodeGenerator) GenerateCode(pkg, name string, consts []string) ([]byte
 		"Consts":          filtered,
 	}
 
-	tmpl, err := template.
-		New("code").
-		Funcs(template.FuncMap{"export": cg.exportName}).
-		Parse(cg.codeTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("parse code template: %w", err)
-	}
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
+	if err := cg.codeTmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("execute code template: %w", err)
 	}
 
@@ -117,19 +134,15 @@ func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, con
 		"Cases":           casesBuilder.String(),
 	}
 
-	tmpl, err := template.New("test").Parse(testTemplate)
-	if err != nil {
-		return fmt.Errorf("parse test template: %w", err)
-	}
 	var testBuf bytes.Buffer
-	if err := tmpl.Execute(&testBuf, data); err != nil {
+	if err := cg.testTmpl.Execute(&testBuf, data); err != nil {
 		return fmt.Errorf("execute test template: %w", err)
 	}
 
 	// Write enum specific test
 	testFile := filepath.Join(pkgDir, fmt.Sprintf("enum_%s_gen_test.go", strings.ToLower(name)))
 	if err := os.WriteFile(testFile, testBuf.Bytes(), 0o600); err != nil {
-		return fmt.Errorf("write test file: %w", err)
+		return fmt.Errorf("%w: %w", ErrWriteTestFile, err)
 	}
 
 	// Always (re)write base_test.go to ensure it's up-to-date
@@ -138,12 +151,8 @@ func (cg *CodeGenerator) GenerateTests(pkg, pkgDir, importPath, name string, con
 		"ImportPath":   importPath,
 		"EnumsPkgName": cg.EnumsPkgName,
 	}
-	baseTmpl, err := template.New("base").Parse(baseTestHelperTemplate)
-	if err != nil {
-		return fmt.Errorf("parse base template: %w", err)
-	}
 	var baseBuf bytes.Buffer
-	if err := baseTmpl.Execute(&baseBuf, baseData); err != nil {
+	if err := cg.baseTmpl.Execute(&baseBuf, baseData); err != nil {
 		return fmt.Errorf("execute base template: %w", err)
 	}
 	baseFile := filepath.Join(pkgDir, "base_test.go")
