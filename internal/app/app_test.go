@@ -23,7 +23,6 @@ func TestApp_Run(t *testing.T) {
 		pkgDir   string
 		goFile   string
 		goLine   string
-		goPkg    string
 	}
 
 	type testCase struct {
@@ -44,13 +43,12 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
-				goPkg:    "enums",
 			},
 			codeOut: []byte("generated code for Role"),
 			genMock: func(t *testing.T, args args, codeOut []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
 				gen.On("GenerateCode", "foo", "Role", mock.Anything).Return(codeOut, nil).Once()
-				gen.On("GenerateTests", "foo", args.pkgDir, "github.com/example/mod/internal/foo/enums", "Role", mock.Anything).
+				gen.On("GenerateTests", "foo", args.pkgDir, "github.com/example/mod/internal/foo", "Role", mock.Anything).
 					Return(nil).
 					Once()
 				return gen
@@ -84,7 +82,6 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
-				goPkg:    "enums",
 			},
 			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				return mocks.NewCodeGenerator(t)
@@ -109,7 +106,6 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
-				goPkg:    "enums",
 			},
 			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				return mocks.NewCodeGenerator(t)
@@ -134,7 +130,6 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   filepath.Join(t.TempDir(), "does-not-exist"),
 				goFile:   "file.go",
 				goLine:   "10",
-				goPkg:    "enums",
 			},
 			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
@@ -162,7 +157,6 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
-				goPkg:    "enums",
 			},
 			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
@@ -190,7 +184,6 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   t.TempDir(),
 				goFile:   "env.go",
 				goLine:   "5",
-				goPkg:    "enums",
 			},
 			codeOut: []byte("env code"),
 			genMock: func(t *testing.T, _ args, codeOut []byte) *mocks.CodeGenerator {
@@ -225,7 +218,6 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
-				goPkg:    "enums",
 			},
 			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
@@ -259,7 +251,6 @@ func TestApp_Run(t *testing.T) {
 				pkgDir:   t.TempDir(),
 				goFile:   "file.go",
 				goLine:   "10",
-				goPkg:    "enums",
 			},
 			genMock: func(t *testing.T, _ args, _ []byte) *mocks.CodeGenerator {
 				gen := mocks.NewCodeGenerator(t)
@@ -297,7 +288,7 @@ func TestApp_Run(t *testing.T) {
 			loc := tc.locMock(t, tc.args)
 
 			a := apppkg.New(gen, loc, par)
-			err := a.Run(tc.args.enumName, tc.args.pkgDir, tc.args.goFile, tc.args.goLine, tc.args.goPkg)
+			err := a.Run(tc.args.enumName, tc.args.pkgDir, tc.args.goFile, tc.args.goLine)
 			tc.assert(t, tc.args.pkgDir, gen, tc.codeOut, err)
 		})
 	}

@@ -23,7 +23,7 @@ func New(generator CodeGenerator, locator Locator, parser Parser) *App {
 	}
 }
 
-func (a *App) Run(name, pkgDir, goFile, goLine, gopackage string) error {
+func (a *App) Run(name string, pkgDir string, goFile string, goLine string) error {
 	pkg, consts, err := a.parser.ParseFromFile(pkgDir, goFile, goLine)
 	if err != nil {
 		return err
@@ -59,13 +59,15 @@ func (a *App) Run(name, pkgDir, goFile, goLine, gopackage string) error {
 	}
 
 	rel = filepath.ToSlash(rel)
-	enumsImport := path.Join(modulePath, rel, gopackage)
+	enumsImport := path.Join(modulePath, rel)
+
 	slog.Debug(
 		"Enum import",
-		slog.String("modRoot", modRoot),
-		slog.String("enumsImport", enumsImport),
-		slog.String("modulePath", modulePath),
-		slog.String("pkgDir", pkgDir),
+		slog.String("root", modRoot),
+		slog.String("enums import", enumsImport),
+		slog.String("module path", modulePath),
+		slog.String("package dir", pkgDir),
+		slog.String("relative package path", rel),
 	)
 
 	if err := a.generator.GenerateTests(pkg, pkgDir, enumsImport, name, consts); err != nil {
