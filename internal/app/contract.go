@@ -13,7 +13,7 @@ var (
 //go:generate mockery --name CodeGenerator --filename codegenerator.go --structname CodeGenerator --output internal/mocks
 type CodeGenerator interface {
 	GenerateCode(pkg, name string, consts []string) ([]byte, error)
-	GenerateTests(pkg, pkgDir, importPath, name string, consts []string) error
+	GenerateTests(pkg string, pkgDir string, importPath string, name string, consts []string) error
 }
 
 //go:generate mockery --name Parser --filename parser.go --structname Parser --output internal/mocks

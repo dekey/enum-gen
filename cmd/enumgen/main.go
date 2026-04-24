@@ -13,11 +13,20 @@ import (
 )
 
 func main() {
+	gopackage := os.Getenv("GOPACKAGE")
+	goLine := os.Getenv("GOLINE")
+	goFile := os.Getenv("GOFILE")
+
 	var name string
 	var enumsPkgName string
 	var debug bool
 	flag.StringVar(&name, "name", "", "This variable is responsible for naming files and structures")
-	flag.StringVar(&enumsPkgName, "enums-pkg-name", "enums", "The package name/alias for enums in tests")
+	flag.StringVar(
+		&enumsPkgName,
+		"enums-pkg-name",
+		gopackage,
+		"The package name/alias for the generated package in tests",
+	)
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 	flag.Parse()
 
@@ -36,9 +45,6 @@ func main() {
 		os.Exit(2)
 	}
 
-	gopackage := os.Getenv("GOPACKAGE")
-	goLine := os.Getenv("GOLINE")
-	goFile := os.Getenv("GOFILE")
 	if goFile == "" {
 		slog.Error("error during code generation", slog.String("message", "GOFILE is not set; run via `go generate`"))
 		os.Exit(2)
@@ -66,7 +72,7 @@ func main() {
 	locator := filesystem.NewLocator()
 
 	consoleApp := app.New(g, locator, p)
-	if err := consoleApp.Run(name, pkgDir, goFile, goLine, gopackage); err != nil {
+	if err := consoleApp.Run(name, pkgDir, goFile, goLine); err != nil {
 		msg := strings.ReplaceAll(err.Error(), "\n", "")
 		msg = strings.ReplaceAll(msg, "\r", "")
 

@@ -264,32 +264,82 @@ func TestGenerateTests_Table(t *testing.T) {
 
 func TestNewCodeGenerator_ReturnsNoError(t *testing.T) {
 	t.Parallel()
-	cg, err := generator.NewCodeGenerator()
-	require.NoError(t, err)
-	require.NotNil(t, cg)
+
+	testCases := []struct {
+		name   string
+		assert func(t *testing.T, cg *generator.CodeGenerator, err error)
+	}{
+		{
+			name: "returns non-nil generator with no error",
+			assert: func(t *testing.T, cg *generator.CodeGenerator, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, cg)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cg, err := generator.NewCodeGenerator()
+			tc.assert(t, cg, err)
+		})
+	}
 }
 
 func TestGenerateTests_OverwritesBaseTestOnSecondCall(t *testing.T) {
 	t.Parallel()
 
-	pkgDir := t.TempDir()
-	cg, err := generator.NewCodeGenerator()
-	require.NoError(t, err)
+	type call struct {
+		pkg        string
+		importPath string
+		typ        string
+		consts     []string
+	}
 
-	// First call — writes base_test.go with pkg "first"
-	err = cg.GenerateTests("first", pkgDir, "github.com/dekey/enums/internal/first", "Role", []string{"A"})
-	require.NoError(t, err)
+	testCases := []struct {
+		name   string
+		first  call
+		second call
+		assert func(t *testing.T, pkgDir string, err error)
+	}{
+		{
+			name: "second call overwrites base_test.go package declaration",
+			first: call{
+				pkg:        "first",
+				importPath: "github.com/dekey/enums/internal/first",
+				typ:        "Role",
+				consts:     []string{"A"},
+			},
+			second: call{
+				pkg:        "second",
+				importPath: "github.com/dekey/enums/internal/second",
+				typ:        "Env",
+				consts:     []string{"B"},
+			},
+			assert: func(t *testing.T, pkgDir string, err error) {
+				require.NoError(t, err)
+				content := readFile(t, filepath.Join(pkgDir, "base_test.go"))
+				require.Contains(t, content, "package second")
+				require.NotContains(t, content, "package first")
+			},
+		},
+	}
 
-	firstContent := readFile(t, filepath.Join(pkgDir, "base_test.go"))
-	require.Contains(t, firstContent, "package first")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			pkgDir := t.TempDir()
+			cg, err := generator.NewCodeGenerator()
+			require.NoError(t, err)
 
-	// Second call — overwrites base_test.go with pkg "second"
-	err = cg.GenerateTests("second", pkgDir, "github.com/dekey/enums/internal/second", "Env", []string{"B"})
-	require.NoError(t, err)
+			err = cg.GenerateTests(tc.first.pkg, pkgDir, tc.first.importPath, tc.first.typ, tc.first.consts)
+			require.NoError(t, err)
 
-	secondContent := readFile(t, filepath.Join(pkgDir, "base_test.go"))
-	require.Contains(t, secondContent, "package second")
-	require.NotContains(t, secondContent, "package first")
+			err = cg.GenerateTests(tc.second.pkg, pkgDir, tc.second.importPath, tc.second.typ, tc.second.consts)
+			tc.assert(t, pkgDir, err)
+		})
+	}
 }
 
 func getEnumFileBytes(t *testing.T, pkgDir string, typ string) []byte {
